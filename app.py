@@ -44,14 +44,14 @@ if uploaded_file is not None:
 
     # Distribuzione target
     st.subheader(f"📌 Distribuzione della variabile target: {target_column}")
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6,4))
     sns.histplot(df[target_column].dropna(), kde=True, ax=ax)
     st.pyplot(fig)
 
     # --- Analisi univariata numerica ---
     st.subheader("📊 Distribuzioni Univariate (Numeriche)")
     for col in eda.numeric_df.columns:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(6,4))
         sns.histplot(eda.numeric_df[col], kde=True, ax=ax)
         ax.set_title(f"Distribuzione di {col}")
         st.pyplot(fig)
@@ -60,7 +60,7 @@ if uploaded_file is not None:
     if not eda.categorical_df.empty:
         st.subheader("📊 Distribuzioni Univariate (Categoriche)")
         for col in eda.categorical_df.columns:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(6,4))
             sns.countplot(x=eda.categorical_df[col], ax=ax)
             ax.set_title(f"Distribuzione di {col}")
             plt.xticks(rotation=90)
@@ -70,7 +70,7 @@ if uploaded_file is not None:
     st.subheader("🔗 Analisi Bivariata (Numeriche vs Target)")
     for col in eda.numeric_df.columns:
         if col != target_column:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(6,4))
             sns.scatterplot(x=eda.numeric_df[col], y=df[target_column], ax=ax)
             ax.set_title(f"{col} vs {target_column}")
             st.pyplot(fig)
@@ -79,7 +79,7 @@ if uploaded_file is not None:
     if not eda.categorical_df.empty:
         st.subheader("🔗 Analisi Bivariata (Categoriche vs Target)")
         for col in eda.categorical_df.columns:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(6,4))
             sns.boxplot(x=eda.categorical_df[col], y=df[target_column], ax=ax)
             ax.set_title(f"{col} vs {target_column}")
             plt.xticks(rotation=90)
@@ -87,7 +87,7 @@ if uploaded_file is not None:
 
     # --- Correlazione ---
     st.subheader("📌 Matrice di Correlazione")
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(6,4))
     sns.heatmap(eda.numeric_df.corr(), annot=True, cmap="coolwarm", ax=ax)
     st.pyplot(fig)
 
@@ -112,6 +112,7 @@ if uploaded_file is not None:
     st.subheader("💾 Scarica Dataset Elaborato")
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Scarica CSV", csv, "dataset_elaborato.csv", "text/csv")
+
 
 
 
