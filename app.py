@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from utils.eda_class import EDA  # ✅ percorso aggiornato
+from utils.eda_utils import EDA  # ✅ percorso aggiornato
 from scipy.stats import shapiro  # ✅ serve per il test di normalità
 
 
@@ -112,4 +112,5 @@ if uploaded_file is not None:
     st.subheader("💾 Scarica Dataset Elaborato")
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Scarica CSV", csv, "dataset_elaborato.csv", "text/csv")
+
 
