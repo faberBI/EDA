@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from utils.eda_utils import EDA  # ✅ percorso aggiornato
 from scipy.stats import shapiro  # ✅ serve per il test di normalità
-
+import io
 
 st.set_page_config(page_title="EDA Automatica", layout="wide")
 
@@ -28,9 +28,9 @@ if uploaded_file is not None:
 
     # Info dataset
     st.subheader("ℹ️ Informazioni sul Dataset")
-    buffer = []
-    df.info(buf=buffer.append)   # workaround per catturare il testo
-    st.text("\n".join(buffer))
+    buffer = io.StringIO()
+    df.info(buf=buffer)  # scrive dentro StringIO
+    st.text(buffer.getvalue())
 
     st.subheader("📈 Statistiche descrittive")
     st.write(eda.numeric_df.describe())
@@ -112,5 +112,6 @@ if uploaded_file is not None:
     st.subheader("💾 Scarica Dataset Elaborato")
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Scarica CSV", csv, "dataset_elaborato.csv", "text/csv")
+
 
 
