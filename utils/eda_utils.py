@@ -211,17 +211,17 @@ class EDA:
         self.save_plot(plt.gca().get_figure().show, f'eda_images/target_distribution_{target_column}_{"log" if log_scale else "linear"}.png')
 
     def clustering_analysis(self, n_clusters=3, return_fig=False):
-    """
-    Performs clustering analysis using KMeans and DBSCAN, 
-    calculates silhouette score and plots results.
+        """
+        Performs clustering analysis using KMeans and DBSCAN, 
+        calculates silhouette score and plots results.
     
-    Parameters
-    ----------
-    n_clusters : int
+        Parameters
+        ----------
+        n_clusters : int
         Number of clusters for KMeans.
-    return_fig : bool
+        return_fig : bool
         If True, returns matplotlib figures instead of saving them.
-    """
+        """
 
         df_scaled = StandardScaler().fit_transform(self.numeric_df.dropna())
 
