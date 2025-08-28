@@ -46,7 +46,7 @@ if uploaded_file is not None:
     st.subheader(f"📌 Distribuzione della variabile target: {target_column}")
     fig, ax = plt.subplots()
     sns.histplot(df[target_column].dropna(), kde=True, ax=ax)
-    st.pyplot(fig)
+    st.pyplot(fig, use_container_width=False)
 
     # --- Analisi univariata numerica ---
     st.subheader("📊 Distribuzioni Univariate (Numeriche)")
@@ -54,7 +54,7 @@ if uploaded_file is not None:
         fig, ax = plt.subplots(figsize=(6,4))
         sns.histplot(eda.numeric_df[col], kde=True, ax=ax)
         ax.set_title(f"Distribuzione di {col}")
-        st.pyplot(fig)
+        st.pyplot(fig, use_container_width=False)
 
     # --- Analisi univariata categorica ---
     if not eda.categorical_df.empty:
@@ -64,7 +64,7 @@ if uploaded_file is not None:
             sns.countplot(x=eda.categorical_df[col], ax=ax)
             ax.set_title(f"Distribuzione di {col}")
             plt.xticks(rotation=90)
-            st.pyplot(fig)
+            st.pyplot(fig, use_container_width=False)
 
     # --- Analisi bivariata numerica ---
     st.subheader("🔗 Analisi Bivariata (Numeriche vs Target)")
@@ -112,6 +112,7 @@ if uploaded_file is not None:
     st.subheader("💾 Scarica Dataset Elaborato")
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Scarica CSV", csv, "dataset_elaborato.csv", "text/csv")
+
 
 
 
