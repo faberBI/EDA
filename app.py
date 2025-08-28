@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from eda_class import EDA   # importa la tua classe EDA dal file dove l’hai salvata
+from utils.eda_class import EDA  # ✅ percorso aggiornato
+from scipy.stats import shapiro  # ✅ serve per il test di normalità
+
 
 st.set_page_config(page_title="EDA Automatica", layout="wide")
 
@@ -110,3 +112,4 @@ if uploaded_file is not None:
     st.subheader("💾 Scarica Dataset Elaborato")
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Scarica CSV", csv, "dataset_elaborato.csv", "text/csv")
+
