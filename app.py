@@ -44,7 +44,7 @@ if uploaded_file is not None:
 
     # Distribuzione target
     st.subheader(f"📌 Distribuzione della variabile target: {target_column}")
-    fig, ax = plt.subplots(figsize=(6,4))
+    fig, ax = plt.subplots()
     sns.histplot(df[target_column].dropna(), kde=True, ax=ax)
     st.pyplot(fig)
 
@@ -112,6 +112,7 @@ if uploaded_file is not None:
     st.subheader("💾 Scarica Dataset Elaborato")
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Scarica CSV", csv, "dataset_elaborato.csv", "text/csv")
+
 
 
 
