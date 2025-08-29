@@ -212,11 +212,11 @@ if uploaded_file is not None:
 # ============================================================
 st.header("⚡ Machine Learning Automatica")
 
-training_ready = False
+# Dizionario modelli
 models = {}
+training_ready = False  
 
-# --- Scelta della colonna target ---
-if "target_column" in locals() and target_column is not None and target_column != "":
+if target_column:
     # --- Features & Target ---
     features = [col for col in df.columns if col != target_column]
     X = df[features]
@@ -237,9 +237,11 @@ if "target_column" in locals() and target_column is not None and target_column !
     test_size = st.slider("Percentuale Test Set (%)", 10, 40, 20) / 100
     val_size = st.slider("Percentuale Validation Set (%)", 10, 40, 20) / 100
 
+    # Primo split: train vs temp
     X_train, X_temp, y_train, y_temp = train_test_split(
         X, y, test_size=(test_size + val_size), random_state=42
     )
+    # Secondo split: validation vs test
     relative_val_size = val_size / (test_size + val_size)
     X_val, X_test, y_val, y_test = train_test_split(
         X_temp, y_temp, test_size=(1 - relative_val_size), random_state=42
@@ -249,6 +251,8 @@ if "target_column" in locals() and target_column is not None and target_column !
     st.write(f"📊 Validation: {len(X_val)} ({len(X_val)/len(X):.1%})")
     st.write(f"📊 Test: {len(X_test)} ({len(X_test)/len(X):.1%})")
 
+    # ✅ Flag attivata subito dopo lo split
+    training_ready = True
     # ------------------------------------------------------------
     # 🔧 Preprocessing completo (missing, scaling, encoding)
     # ------------------------------------------------------------
@@ -575,6 +579,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
