@@ -75,9 +75,8 @@ if uploaded_file is not None:
     missing = df.isnull().sum()
     st.write(missing[missing > 0])
 
-
-   # ------------------------------------------------------------
-# 🛠️ Gestione dei Missing Values
+# ------------------------------------------------------------
+# 🛠️ Gestione dei Missing Values (UI)
 # ------------------------------------------------------------
 missing_strategy = None  
 
@@ -87,7 +86,7 @@ if missing.sum() > 0:
     option = st.radio(
         "Come vuoi gestire i valori mancanti?",
         ["Nessuna azione", "Rimuovi righe", "Rimuovi colonne", 
-         "Imputazione semplice (Media/Mediana/Moda)", "Imputazione avanzata (MissForest)"]
+         "Imputazione semplice (Media/Mediana/Moda)", "Imputazione avanzata (Iterative Imputer)"]
     )
 
     if option == "Rimuovi righe":
@@ -105,9 +104,9 @@ if missing.sum() > 0:
             missing_strategy = "median"
         else:
             missing_strategy = "mode"
-    elif option == "Imputazione avanzata (MissForest)":
-        missing_strategy = "missforest"
-        st.info("ℹ️ Verrà usato MissForest dopo lo split (solo su X, non su y).")
+    elif option == "Imputazione avanzata (Iterative Imputer)":
+        missing_strategy = "iterative"
+        st.info("ℹ️ Verrà usato IterativeImputer dopo lo split (solo su X, non su y).")
     # Scelta target
     target_column = st.selectbox("Scegli la variabile target (y)", df.columns)
 
@@ -260,6 +259,17 @@ if missing_strategy:
     st.write("✅ Missing values gestiti con strategia:", missing_strategy)
     st.write("📊 NaN rimasti in X_train:", X_train.isna().sum().sum())
 
+# ------------------------------------------------------------
+# 🧹 Pulizia y (target)
+# ------------------------------------------------------------
+if isinstance(y_train, pd.Series):
+    y_train = y_train.dropna()
+    y_train = y_train[~y_train.isin([np.inf, -np.inf])]
+else:
+    y_train = pd.Series(y_train).dropna()
+    y_train = y_train[~y_train.isin([np.inf, -np.inf])]
+
+    y_train = y_train.reset_index(drop=True)
 
     # Feature scaling
     scaler = StandardScaler()
@@ -527,6 +537,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
