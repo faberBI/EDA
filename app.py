@@ -6,6 +6,7 @@ from utils.eda_utils import EDA  # ✅ percorso aggiornato
 from scipy.stats import shapiro
 import io
 import numpy as np
+
 # ML librerie
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
@@ -19,6 +20,8 @@ from catboost import CatBoostClassifier, CatBoostRegressor
 import joblib
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
+from sklearn.impute import SimpleImputer
+from missingpy import MissForest  
 # GPT libreria
 from openai import OpenAI
 import time
@@ -57,6 +60,38 @@ if uploaded_file is not None:
     st.subheader("❓ Missing Values")
     missing = df.isnull().sum()
     st.write(missing[missing > 0])
+
+
+    # --- Flag per imputazione ---
+    missing_strategy = None  # "mean", "median", "mode", "rows", "cols", "missforest"
+
+    if missing.sum() > 0:
+        st.markdown("### 🛠️ Gestione dei Missing Values")
+
+    option = st.radio(
+        "Come vuoi gestire i valori mancanti?",
+        ["Nessuna azione", "Rimuovi righe", "Rimuovi colonne", 
+         "Imputazione semplice (Media/Mediana/Moda)", "Imputazione avanzata (MissForest)"]
+    )
+
+    if option == "Rimuovi righe":
+        missing_strategy = "rows"
+    elif option == "Rimuovi colonne":
+        missing_strategy = "cols"
+    elif option == "Imputazione semplice (Media/Mediana/Moda)":
+        strategy = st.selectbox(
+            "Scegli la strategia di imputazione",
+            ["Media (solo numeriche)", "Mediana (solo numeriche)", "Moda (tutte le colonne)"]
+        )
+        if "Media" in strategy:
+            missing_strategy = "mean"
+        elif "Mediana" in strategy:
+            missing_strategy = "median"
+        else:
+            missing_strategy = "mode"
+    elif option == "Imputazione avanzata (MissForest)":
+        missing_strategy = "missforest"
+        st.info("ℹ️ Verrà usato MissForest dopo lo split (solo su X, non su y).")
 
     # Scelta target
     target_column = st.selectbox("Scegli la variabile target (y)", df.columns)
@@ -179,6 +214,60 @@ if target_column:
     X_val = scaler.transform(X_val)
     X_test = scaler.transform(X_test)
 
+    if missing_strategy:
+    st.markdown("### 🔧 Applicazione della strategia di imputazione")
+
+    if missing_strategy == "rows":
+        # Rimuoviamo le righe con missing solo nei set X
+        mask_train = ~pd.DataFrame(X_train).isnull().any(axis=1)
+        X_train, y_train = X_train[mask_train], y_train[mask_train]
+
+        mask_val = ~pd.DataFrame(X_val).isnull().any(axis=1)
+        X_val, y_val = X_val[mask_val], y_val[mask_val]
+
+        mask_test = ~pd.DataFrame(X_test).isnull().any(axis=1)
+        X_test, y_test = X_test[mask_test], y_test[mask_test]
+
+        st.success("✅ Righe con valori mancanti rimosse dopo lo split")
+
+    elif missing_strategy == "cols":
+        # Rimuoviamo le colonne con missing
+        mask_cols = ~pd.DataFrame(X_train).isnull().any()
+        X_train = X_train[:, mask_cols.values]
+        X_val   = X_val[:, mask_cols.values]
+        X_test  = X_test[:, mask_cols.values]
+
+        st.success("✅ Colonne con valori mancanti rimosse dopo lo split")
+
+    elif missing_strategy in ["mean", "median", "mode"]:
+        if missing_strategy == "mean":
+            imputer = SimpleImputer(strategy="mean")
+        elif missing_strategy == "median":
+            imputer = SimpleImputer(strategy="median")
+        else:
+            imputer = SimpleImputer(strategy="most_frequent")
+
+        X_train = imputer.fit_transform(X_train)
+        X_val   = imputer.transform(X_val)
+        X_test  = imputer.transform(X_test)
+
+        st.success(f"✅ Missing values imputati con {missing_strategy}")
+
+    elif missing_strategy == "missforest":
+        imputer = MissForest(random_state=42, n_estimators=100)
+        X_train = imputer.fit_transform(X_train)
+        X_val   = imputer.transform(X_val)
+        X_test  = imputer.transform(X_test)
+
+        st.success("✅ Missing values imputati con MissForest")
+
+
+
+
+
+
+
+    
     # Feature selection
     st.markdown("### ✨ Feature Selection")
     k = st.slider("Numero di features da selezionare", 5, X.shape[1], min(20, X.shape[1]))
@@ -366,5 +455,6 @@ if target_column:
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
