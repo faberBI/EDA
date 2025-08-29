@@ -321,9 +321,13 @@ if target_column:
             X_train = pd.concat([X_train.drop(columns=categorical_cols), train_encoded], axis=1)
             X_val   = pd.concat([X_val.drop(columns=categorical_cols), val_encoded], axis=1)
             X_test  = pd.concat([X_test.drop(columns=categorical_cols), test_encoded], axis=1)
+        
+        # 🔧 Forza tutte le feature a numeriche (anti-errori per XGBoost & co.)
+        for df_tmp in [X_train, X_val, X_test]:
+            for col in df_tmp.select_dtypes(include=["object", "string"]).columns:
+                df_tmp[col] = df_tmp[col].astype("category").cat.codes
 
-        st.success("✅ Dati preprocessati!")
-
+        st.success("✅ Dati preprocessati e convertiti in numerici!")
         # Pulizia y
         y_train = pd.Series(y_train).dropna().replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
         y_val   = pd.Series(y_val).dropna().replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
@@ -578,6 +582,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
