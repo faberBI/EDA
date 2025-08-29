@@ -335,18 +335,18 @@ if st.button("🚀 Avvia training"):
         best_model = None
         best_score = -9999
 
+        # --- Debug dataset ---
+        st.subheader("🔍 Debug dataset prima del training")
+        st.write(f"X_train shape: {X_train.shape} | NaN: {np.isnan(X_train).sum()}")
+        st.write(f"y_train shape: {y_train.shape} | classi uniche: {np.unique(y_train)}")
+        st.write(f"X_test shape: {X_test.shape} | NaN: {np.isnan(X_test).sum()}")
+        st.write(f"y_test shape: {y_test.shape} | classi uniche: {np.unique(y_test)}")
+
         # Funzione per calcolare ECE
         def expected_calibration_error(y_true, y_prob, n_bins=10):
             prob_true, prob_pred = calibration_curve(y_true, y_prob, n_bins=n_bins)
             ece = np.sum(np.abs(prob_pred - prob_true) * np.histogram(y_prob, bins=n_bins)[0]) / len(y_prob)
             return ece
-
-        # 🔍 Debug: controllo dataset
-        st.write("### 🔍 Debug dataset prima del training")
-        st.write("X_train shape:", X_train.shape, " | NaN:", np.isnan(X_train).sum())
-        st.write("y_train shape:", y_train.shape, " | classi:", np.unique(y_train))
-        st.write("X_test shape:", X_test.shape, " | NaN:", np.isnan(X_test).sum())
-        st.write("y_test shape:", y_test.shape, " | classi:", np.unique(y_test))
 
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -357,79 +357,82 @@ if st.button("🚀 Avvia training"):
         for name, model in models.items():
             completed += 1
             status_text.text(f"⏳ Allenamento modello: {name} ({completed}/{total_models})...")
-
+            
             try:
-                # 🔍 Debug: print nel terminale
-                print(f"\n--- TRAINING {name} ---")
-                print("X_train:", X_train.shape, "y_train:", y_train.shape)
-
                 model.fit(X_train, y_train)
 
-                # Train & Test prediction
+                # Predizioni
                 y_pred_train = model.predict(X_train)
-                y_pred_test = model.predict(X_test)
+                y_pred_test  = model.predict(X_test)
 
                 if problem_type == "classification":
-                    # Pred proba se disponibile
+                    # Probabilità se disponibili
                     y_prob_test = None
                     try:
-                        y_prob_test = model.predict_proba(X_test)[:, 1] if len(set(y)) == 2 else model.predict_proba(X_test).max(axis=1)
+                        if len(np.unique(y)) == 2:
+                            y_prob_test = model.predict_proba(X_test)[:,1]
+                        else:
+                            y_prob_test = model.predict_proba(X_test).max(axis=1)
                     except Exception as e:
-                        st.warning(f"⚠️ {name} non supporta predict_proba: {e}")
+                        st.warning(f"{name}: impossibile calcolare predict_proba ({e})")
 
                     metrics = {
-                        "Train Accuracy": accuracy_score(y_train, model.predict(X_train)),
+                        "Train Accuracy": accuracy_score(y_train, y_pred_train),
                         "Test Accuracy": accuracy_score(y_test, y_pred_test),
-                        "Train F1": f1_score(y_train, model.predict(X_train), average="weighted"),
+                        "Train F1": f1_score(y_train, y_pred_train, average="weighted"),
                         "Test F1": f1_score(y_test, y_pred_test, average="weighted"),
                     }
+
                     if y_prob_test is not None:
                         try:
                             metrics["Test AUC"] = roc_auc_score(y_test, model.predict_proba(X_test), multi_class="ovr")
-                        except Exception as e:
-                            st.warning(f"⚠️ AUC non calcolabile per {name}: {e}")
+                        except:
+                            metrics["Test AUC"] = None
                         try:
                             metrics["Brier Score"] = brier_score_loss(y_test, y_prob_test)
                             metrics["ECE"] = expected_calibration_error(y_test, y_prob_test)
-                        except Exception as e:
-                            st.warning(f"⚠️ Brier/ECE non calcolabili per {name}: {e}")
+                        except:
+                            pass
 
                     score = metrics["Test F1"]
 
-                else:  # Regressione
+                else:  # Regression
                     metrics = {
-                        "Train RMSE": np.sqrt(mean_squared_error(y_train, y_pred_train)),
-                        "Test RMSE": np.sqrt(mean_squared_error(y_test, y_pred_test)),
-                        "Train MAE": mean_absolute_error(y_train, y_pred_train),
-                        "Test MAE": mean_absolute_error(y_test, y_pred_test),
-                        "Train R2": r2_score(y_train, y_pred_train),
-                        "Test R2": r2_score(y_test, y_pred_test),
+                        "Train RMSE":  np.sqrt(mean_squared_error(y_train, y_pred_train)),
+                        "Test RMSE":   np.sqrt(mean_squared_error(y_test, y_pred_test)),
+                        "Train MAE":   mean_absolute_error(y_train, y_pred_train),
+                        "Test MAE":    mean_absolute_error(y_test, y_pred_test),
+                        "Train R2":    r2_score(y_train, y_pred_train),
+                        "Test R2":     r2_score(y_test, y_pred_test),
                     }
                     score = -metrics["Test RMSE"]
 
+                # Salva metriche
                 results[name] = metrics
+                st.write(f"📊 Risultati parziali - {name}", metrics)
 
-                if score > best_score:
+                # Aggiorna best model
+                if score is not None and score > best_score:
                     best_score = score
                     best_model = model
 
             except Exception as e:
                 import traceback
                 st.error(f"❌ Errore durante l'allenamento di {name}: {type(e).__name__} - {e}")
-                st.exception(e)  # Mostra tutto il traceback in modo leggibile
-                print(traceback.format_exc())  # Debug nel terminale
+                st.text(traceback.format_exc())
 
             progress_bar.progress(completed / total_models)
 
         status_text.text("✅ Training completato!")
 
         if best_model is None:
-            st.error("❌ Nessun modello è stato allenato correttamente. Controlla gli errori sopra ⬆️")
+            st.error("❌ Nessun modello è stato allenato correttamente.")
         else:
-            st.success(f"✅ Miglior modello: {best_model.__class__.__name__}")
+            st.success(f"🏆 Miglior modello: {best_model.__class__.__name__}")
+            st.write("### 📊 Risultati complessivi")
             results_df = pd.DataFrame(results).T
-            st.write("### 📊 Risultati su Train & Test")
             st.write(results_df)
+
 
 
 
@@ -519,6 +522,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
