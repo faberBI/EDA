@@ -76,11 +76,15 @@ if uploaded_file is not None:
     st.write(missing[missing > 0])
 
 # ------------------------------------------------------------
-# 🛠️ Gestione dei Missing Values (UI)
+# 🛠️ Gestione dei Missing Values
 # ------------------------------------------------------------
+
+# 👀 Calcola i missing sul dataset (usa X_train se sei già dopo lo split)
+missing = X_train.isna().sum()
+
 missing_strategy = None  
 
-if missing.sum() > 0:
+if missing.sum() > 0:  # se ci sono NaN in almeno una colonna
     st.markdown("### 🛠️ Gestione dei Missing Values")
 
     option = st.radio(
@@ -107,6 +111,7 @@ if missing.sum() > 0:
     elif option == "Imputazione avanzata (Iterative Imputer)":
         missing_strategy = "iterative"
         st.info("ℹ️ Verrà usato IterativeImputer dopo lo split (solo su X, non su y).")
+
     # Scelta target
     target_column = st.selectbox("Scegli la variabile target (y)", df.columns)
 
@@ -545,6 +550,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
