@@ -341,6 +341,13 @@ if st.button("🚀 Avvia training"):
             ece = np.sum(np.abs(prob_pred - prob_true) * np.histogram(y_prob, bins=n_bins)[0]) / len(y_prob)
             return ece
 
+        # 🔍 Debug: controllo dataset
+        st.write("### 🔍 Debug dataset prima del training")
+        st.write("X_train shape:", X_train.shape, " | NaN:", np.isnan(X_train).sum())
+        st.write("y_train shape:", y_train.shape, " | classi:", np.unique(y_train))
+        st.write("X_test shape:", X_test.shape, " | NaN:", np.isnan(X_test).sum())
+        st.write("y_test shape:", y_test.shape, " | classi:", np.unique(y_test))
+
         progress_bar = st.progress(0)
         status_text = st.empty()
         total_models = len(models)
@@ -350,8 +357,12 @@ if st.button("🚀 Avvia training"):
         for name, model in models.items():
             completed += 1
             status_text.text(f"⏳ Allenamento modello: {name} ({completed}/{total_models})...")
-            
+
             try:
+                # 🔍 Debug: print nel terminale
+                print(f"\n--- TRAINING {name} ---")
+                print("X_train:", X_train.shape, "y_train:", y_train.shape)
+
                 model.fit(X_train, y_train)
 
                 # Train & Test prediction
@@ -362,9 +373,9 @@ if st.button("🚀 Avvia training"):
                     # Pred proba se disponibile
                     y_prob_test = None
                     try:
-                        y_prob_test = model.predict_proba(X_test)[:,1] if len(set(y)) == 2 else model.predict_proba(X_test).max(axis=1)
-                    except:
-                        pass
+                        y_prob_test = model.predict_proba(X_test)[:, 1] if len(set(y)) == 2 else model.predict_proba(X_test).max(axis=1)
+                    except Exception as e:
+                        st.warning(f"⚠️ {name} non supporta predict_proba: {e}")
 
                     metrics = {
                         "Train Accuracy": accuracy_score(y_train, model.predict(X_train)),
@@ -375,17 +386,20 @@ if st.button("🚀 Avvia training"):
                     if y_prob_test is not None:
                         try:
                             metrics["Test AUC"] = roc_auc_score(y_test, model.predict_proba(X_test), multi_class="ovr")
-                        except:
-                            metrics["Test AUC"] = None
+                        except Exception as e:
+                            st.warning(f"⚠️ AUC non calcolabile per {name}: {e}")
+                        try:
                             metrics["Brier Score"] = brier_score_loss(y_test, y_prob_test)
                             metrics["ECE"] = expected_calibration_error(y_test, y_prob_test)
+                        except Exception as e:
+                            st.warning(f"⚠️ Brier/ECE non calcolabili per {name}: {e}")
 
                     score = metrics["Test F1"]
 
                 else:  # Regressione
                     metrics = {
-                        "Train RMSE":  np.sqrt(mean_squared_error(y_train, y_pred_train)),
-                        "Test RMSE":  np.sqrt(mean_squared_error(y_test, y_pred_test)),
+                        "Train RMSE": np.sqrt(mean_squared_error(y_train, y_pred_train)),
+                        "Test RMSE": np.sqrt(mean_squared_error(y_test, y_pred_test)),
                         "Train MAE": mean_absolute_error(y_train, y_pred_train),
                         "Test MAE": mean_absolute_error(y_test, y_pred_test),
                         "Train R2": r2_score(y_train, y_pred_train),
@@ -400,21 +414,23 @@ if st.button("🚀 Avvia training"):
                     best_model = model
 
             except Exception as e:
-                    import traceback
-                    st.error(f"❌ Errore durante l'allenamento di {name}: {type(e).__name__} - {e}")
-                    st.text(traceback.format_exc())
+                import traceback
+                st.error(f"❌ Errore durante l'allenamento di {name}: {type(e).__name__} - {e}")
+                st.exception(e)  # Mostra tutto il traceback in modo leggibile
+                print(traceback.format_exc())  # Debug nel terminale
 
             progress_bar.progress(completed / total_models)
 
         status_text.text("✅ Training completato!")
 
         if best_model is None:
-            st.error("❌ Nessun modello è stato allenato correttamente.")
+            st.error("❌ Nessun modello è stato allenato correttamente. Controlla gli errori sopra ⬆️")
         else:
-            # Mostriamo risultati solo dopo il training
-            st.write("### 📊 Risultati su Train & Test")
+            st.success(f"✅ Miglior modello: {best_model.__class__.__name__}")
             results_df = pd.DataFrame(results).T
+            st.write("### 📊 Risultati su Train & Test")
             st.write(results_df)
+
 
 
     # --- Grafici comparativi ---
@@ -503,6 +519,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
