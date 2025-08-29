@@ -47,6 +47,16 @@ if uploaded_file is not None:
     st.subheader("📊 Anteprima del Dataset")
     st.write(df.head())
 
+    # 🔹 Selezione variabili da considerare
+    st.markdown("### 🔎 Seleziona le variabili da includere nell'analisi")
+    selected_columns = st.multiselect(
+        "Scegli le colonne (se non selezioni nulla, verranno usate tutte):",
+        options=df.columns.tolist(),
+        default=df.columns.tolist()
+    )
+
+    # Applica filtro
+    df = df[selected_columns]
     # Inizializza EDA
     eda = EDA(df)
 
@@ -175,7 +185,8 @@ if uploaded_file is not None:
 st.header("⚡ Machine Learning Automatica")
 
 if target_column:
-    X = df.drop(columns=[target_column])
+    features = [col for col in df.columns if col != target_column]
+    X = df[features]
     y = df[target_column]
 
     # Encoding variabili categoriche
@@ -321,6 +332,8 @@ if target_column:
         if st.checkbox("CatBoost"):
             models["CatBoost"] = CatBoostRegressor(verbose=0)
 
+    # --- Avvio Training ---
+if st.button("🚀 Avvia training"):
     results = {}
     best_model = None
     best_score = -9999
@@ -365,8 +378,8 @@ if target_column:
 
         else:  # Regressione
             metrics = {
-                "Train RMSE": mean_squared_error(y_train, y_pred_train, squared=False),
-                "Test RMSE": mean_squared_error(y_test, y_pred_test, squared=False),
+                "Train RMSE":  np.sqrt(mean_squared_error(y_train, y_pred_train)),
+                "Test RMSE":  np.sqrt(mean_squared_error(y_test, y_pred_test)),
                 "Train MAE": mean_absolute_error(y_train, y_pred_train),
                 "Test MAE": mean_absolute_error(y_test, y_pred_test),
                 "Train R2": r2_score(y_train, y_pred_train),
@@ -380,9 +393,11 @@ if target_column:
             best_score = score
             best_model = model
 
+    # Mostriamo risultati solo dopo il training
     st.write("### 📊 Risultati su Train & Test")
     results_df = pd.DataFrame(results).T
     st.write(results_df)
+
 
     # --- Grafici comparativi ---
     st.subheader("📉 Confronto modelli")
@@ -470,6 +485,7 @@ if target_column:
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
