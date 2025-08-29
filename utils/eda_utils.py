@@ -214,40 +214,58 @@ class EDA:
         """
         Performs clustering analysis using KMeans and DBSCAN, 
         calculates silhouette score and plots results.
-    
+
         Parameters
         ----------
         n_clusters : int
-        Number of clusters for KMeans.
+            Number of clusters for KMeans.
         return_fig : bool
-        If True, returns matplotlib figures instead of saving them.
+            If True, returns matplotlib figures instead of saving them.
         """
 
-        df_scaled = StandardScaler().fit_transform(self.numeric_df.dropna())
+    # Usa solo righe senza NaN per il clustering
+        df_no_na = self.numeric_df.dropna()
+        df_scaled = StandardScaler().fit_transform(df_no_na)
 
         figs = []  # per Streamlit
 
     # --- KMeans ---
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         kmeans_clusters = kmeans.fit_predict(df_scaled)
-        self.df['KMeans_Cluster'] = kmeans_clusters
+
+    # 🔧 Allinea ai soli indici senza NaN
+        self.df.loc[df_no_na.index, "KMeans_Cluster"] = kmeans_clusters
 
         silhouette_avg_kmeans = silhouette_score(df_scaled, kmeans_clusters)
         print(f"Silhouette Score for KMeans: {silhouette_avg_kmeans}")
 
         fig, ax = plt.subplots(figsize=(8, 6))
-        sns.scatterplot(x=df_scaled[:, 0], y=df_scaled[:, 1], hue=kmeans_clusters, palette='viridis', ax=ax)
+        sns.scatterplot(
+            x=df_scaled[:, 0], 
+            y=df_scaled[:, 1], 
+            hue=kmeans_clusters, 
+            palette="viridis", 
+            ax=ax
+        )
         ax.set_title("KMeans Clustering")
         figs.append(fig)
 
         if not return_fig:
-            self.save_plot(lambda: sns.scatterplot(x=df_scaled[:, 0], y=df_scaled[:, 1], hue=kmeans_clusters, palette='viridis'),
-                        'eda_images/kmeans_clustering.png')
+            self.save_plot(
+                lambda: sns.scatterplot(
+                    x=df_scaled[:, 0], 
+                    y=df_scaled[:, 1], 
+                    hue=kmeans_clusters, 
+                    palette="viridis"
+                ),
+                "eda_images/kmeans_clustering.png"
+            )
 
     # --- DBSCAN ---
         dbscan = DBSCAN(eps=0.5, min_samples=5)
         dbscan_clusters = dbscan.fit_predict(df_scaled)
-        self.df['DBSCAN_Cluster'] = dbscan_clusters
+
+        self.df.loc[df_no_na.index, "DBSCAN_Cluster"] = dbscan_clusters
 
         if len(set(dbscan_clusters)) > 1:
             silhouette_avg_dbscan = silhouette_score(df_scaled, dbscan_clusters)
@@ -256,18 +274,33 @@ class EDA:
             print("Silhouette score not calculable for DBSCAN (number of clusters < 2).")
 
         fig, ax = plt.subplots(figsize=(8, 6))
-        sns.scatterplot(x=df_scaled[:, 0], y=df_scaled[:, 1], hue=dbscan_clusters, palette='viridis', ax=ax)
+        sns.scatterplot(
+            x=df_scaled[:, 0], 
+            y=df_scaled[:, 1], 
+            hue=dbscan_clusters, 
+            palette="viridis", 
+            ax=ax
+        )
         ax.set_title("DBSCAN Clustering")
         figs.append(fig)
 
         if not return_fig:
-            self.save_plot(lambda: sns.scatterplot(x=df_scaled[:, 0], y=df_scaled[:, 1], hue=dbscan_clusters, palette='viridis'),
-                        'eda_images/dbscan_clustering.png')
+            self.save_plot(
+                lambda: sns.scatterplot(
+                    x=df_scaled[:, 0], 
+                    y=df_scaled[:, 1], 
+                    hue=dbscan_clusters, 
+                    palette="viridis"
+                ),
+                "eda_images/dbscan_clustering.png"
+            )
 
         if return_fig:
             return figs
 
 
+
     def save_final_db(self, filename):
         """Saves the final DataFrame with clustering columns to a file (CSV, Parquet, or Excel)."""
         self.save_data(filename)
+
