@@ -35,93 +35,96 @@ st.set_page_config(page_title="EDA + ML Automatica", layout="wide")
 
 st.title("🔎 Exploratory Data Analysis + ML App")
 target_column = None 
+df = None  # inizializzo df per evitare NameError
 
-# Upload file
+# ===============================
+# 📂 Upload file
+# ===============================
 uploaded_file = st.file_uploader("Carica un dataset (.csv o .xlsx)", type=["csv", "xlsx"])
 
 if uploaded_file is not None:
-    # Legge il file
+    # --- Lettura file
     if uploaded_file.name.endswith(".csv"):
         df = pd.read_csv(uploaded_file)
     elif uploaded_file.name.endswith(".xlsx"):
         df = pd.read_excel(uploaded_file)
 
+    # --- Anteprima dataset
     st.subheader("📊 Anteprima del Dataset")
     st.write(df.head())
 
-    # 🔹 Selezione variabili da considerare
+    # --- Selezione colonne
     st.markdown("### 🔎 Seleziona le variabili da includere nell'analisi")
     selected_columns = st.multiselect(
         "Scegli le colonne (se non selezioni nulla, verranno usate tutte):",
         options=df.columns.tolist(),
         default=df.columns.tolist()
     )
-
-    # Applica filtro
     df = df[selected_columns]
-    # Inizializza EDA
+
+    # --- Inizializza EDA
     eda = EDA(df)
 
-    # Info dataset
+    # --- Info dataset
     st.subheader("ℹ️ Informazioni sul Dataset")
     buffer = io.StringIO()
     df.info(buf=buffer)
     st.text(buffer.getvalue())
 
+    # --- Statistiche descrittive
     st.subheader("📈 Statistiche descrittive")
     st.write(eda.numeric_df.describe())
 
+    # --- Missing Values
     st.subheader("❓ Missing Values")
-    missing = df.isnull().sum()
+    missing = df.isna().sum()
     st.write(missing[missing > 0])
 
-# ------------------------------------------------------------
-# 🛠️ Gestione dei Missing Values
-# ------------------------------------------------------------
+    # ------------------------------------------------------------
+    # 🛠️ Gestione dei Missing Values
+    # ------------------------------------------------------------
+    missing_strategy = None  
 
-# 👀 Calcola i missing sul dataset (usa X_train se sei già dopo lo split)
-missing = df.isna().sum()
+    if missing.sum() > 0:  # se ci sono NaN
+        st.markdown("### 🛠️ Gestione dei Missing Values")
 
-missing_strategy = None  
-
-if missing.sum() > 0:  # se ci sono NaN in almeno una colonna
-    st.markdown("### 🛠️ Gestione dei Missing Values")
-
-    option = st.radio(
-        "Come vuoi gestire i valori mancanti?",
-        ["Nessuna azione", "Rimuovi righe", "Rimuovi colonne", 
-         "Imputazione semplice (Media/Mediana/Moda)", "Imputazione avanzata (Iterative Imputer)"]
-    )
-
-    if option == "Rimuovi righe":
-        missing_strategy = "rows"
-    elif option == "Rimuovi colonne":
-        missing_strategy = "cols"
-    elif option == "Imputazione semplice (Media/Mediana/Moda)":
-        strategy = st.selectbox(
-            "Scegli la strategia di imputazione",
-            ["Media (solo numeriche)", "Mediana (solo numeriche)", "Moda (tutte le colonne)"]
+        option = st.radio(
+            "Come vuoi gestire i valori mancanti?",
+            ["Nessuna azione", "Rimuovi righe", "Rimuovi colonne", 
+             "Imputazione semplice (Media/Mediana/Moda)", "Imputazione avanzata (Iterative Imputer)"]
         )
-        if "Media" in strategy:
-            missing_strategy = "mean"
-        elif "Mediana" in strategy:
-            missing_strategy = "median"
-        else:
-            missing_strategy = "mode"
-    elif option == "Imputazione avanzata (Iterative Imputer)":
-        missing_strategy = "iterative"
-        st.info("ℹ️ Verrà usato IterativeImputer dopo lo split (solo su X, non su y).")
 
-    # Scelta target
+        if option == "Rimuovi righe":
+            missing_strategy = "rows"
+        elif option == "Rimuovi colonne":
+            missing_strategy = "cols"
+        elif option == "Imputazione semplice (Media/Mediana/Moda)":
+            strategy = st.selectbox(
+                "Scegli la strategia di imputazione",
+                ["Media (solo numeriche)", "Mediana (solo numeriche)", "Moda (tutte le colonne)"]
+            )
+            if "Media" in strategy:
+                missing_strategy = "mean"
+            elif "Mediana" in strategy:
+                missing_strategy = "median"
+            else:
+                missing_strategy = "mode"
+        elif option == "Imputazione avanzata (Iterative Imputer)":
+            missing_strategy = "iterative"
+            st.info("ℹ️ Verrà usato IterativeImputer dopo lo split (solo su X, non su y).")
+
+    # ------------------------------------------------------------
+    # 🎯 Selezione target
+    # ------------------------------------------------------------
     target_column = st.selectbox("Scegli la variabile target (y)", df.columns)
 
-    # Distribuzione target
+    # --- Distribuzione target
     st.subheader(f"📌 Distribuzione della variabile target: {target_column}")
     fig, ax = plt.subplots()
     sns.histplot(df[target_column].dropna(), kde=True, ax=ax)
     st.pyplot(fig, use_container_width=False)
 
-    # --- Analisi univariata numerica ---
+    # --- Analisi univariata numerica
     st.subheader("📊 Distribuzioni Univariate (Numeriche)")
     for col in eda.numeric_df.columns:
         fig, ax = plt.subplots(figsize=(6,4))
@@ -129,7 +132,7 @@ if missing.sum() > 0:  # se ci sono NaN in almeno una colonna
         ax.set_title(f"Distribuzione di {col}")
         st.pyplot(fig, use_container_width=False)
 
-    # --- Analisi univariata categorica ---
+    # --- Analisi univariata categorica
     if not eda.categorical_df.empty:
         st.subheader("📊 Distribuzioni Univariate (Categoriche)")
         for col in eda.categorical_df.columns:
@@ -139,7 +142,7 @@ if missing.sum() > 0:  # se ci sono NaN in almeno una colonna
             plt.xticks(rotation=90)
             st.pyplot(fig, use_container_width=False)
 
-    # --- Analisi bivariata numerica ---
+    # --- Analisi bivariata numerica
     st.subheader("🔗 Analisi Bivariata (Numeriche vs Target)")
     for col in eda.numeric_df.columns:
         if col != target_column:
@@ -148,7 +151,7 @@ if missing.sum() > 0:  # se ci sono NaN in almeno una colonna
             ax.set_title(f"{col} vs {target_column}")
             st.pyplot(fig)
 
-    # --- Analisi bivariata categorica ---
+    # --- Analisi bivariata categorica
     if not eda.categorical_df.empty:
         st.subheader("🔗 Analisi Bivariata (Categoriche vs Target)")
         for col in eda.categorical_df.columns:
@@ -158,33 +161,34 @@ if missing.sum() > 0:  # se ci sono NaN in almeno una colonna
             plt.xticks(rotation=90)
             st.pyplot(fig)
 
-    # --- Correlazione ---
+    # --- Correlazione
     st.subheader("📌 Matrice di Correlazione")
     fig, ax = plt.subplots(figsize=(6,4))
     sns.heatmap(eda.numeric_df.corr(), annot=True, cmap="coolwarm", ax=ax)
     st.pyplot(fig)
 
-    # --- PCA ---
+    # --- PCA
     st.subheader("📊 PCA Analysis")
     fig = eda.pca_analysis(return_fig=True)
     st.pyplot(fig)
 
-    # --- Clustering ---
+    # --- Clustering
     st.subheader("🤖 Clustering Analysis")
     figs = eda.clustering_analysis(return_fig=True)
     for f in figs:
         st.pyplot(f)
 
-    # --- Normalità ---
+    # --- Test di normalità
     st.subheader("📏 Test di Normalità (Shapiro-Wilk)")
     for col in eda.numeric_df.columns:
         stat, p = shapiro(eda.numeric_df[col].dropna())
         st.write(f"**{col}** → Stat={stat:.4f}, p-value={p:.4f}")
 
-    # --- Download dataset finale ---
+    # --- Download dataset finale
     st.subheader("💾 Scarica Dataset Elaborato")
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Scarica CSV", csv, "dataset_elaborato.csv", "text/csv")
+
 
 # ============================================================
 # 🚀 SEZIONE MACHINE LEARNING
@@ -532,6 +536,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
