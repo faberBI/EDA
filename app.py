@@ -223,7 +223,7 @@ if target_column:
     y = df[target_column]
 
     # --- Encoding y se categorico ---
-    if y.dtype == "object" or y.nunique() < 20:
+    if y.dtype == "object" or y.nunique() < 10:
         problem_type = "classification"
         le = LabelEncoder()
         y = le.fit_transform(y)
@@ -579,6 +579,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
