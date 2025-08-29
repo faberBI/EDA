@@ -23,6 +23,8 @@ from sklearn.metrics import brier_score_loss
 from sklearn.impute import SimpleImputer
 from sklearn.experimental import enable_iterative_imputer  
 from sklearn.impute import IterativeImputer
+from sklearn.model_selection import RandomizedSearchCV
+
 # GPT libreria
 from openai import OpenAI
 import time
@@ -296,111 +298,125 @@ if target_column:
     # ------------------------------------------------------------
     # 🚀 Avvio Training
     # ------------------------------------------------------------
-    if st.button("🚀 Avvia training"):
-        if len(models) == 0:
-            st.warning("⚠️ Seleziona almeno un modello per avviare il training.")
-        else:
-            results = {}
-            best_model = None
-            best_score = None
+    # --- Avvio Training ---
+if st.button("🚀 Avvia training"):
+    if len(models) == 0:
+        st.warning("⚠️ Seleziona almeno un modello per avviare il training.")
+    else:
+        results = {}
+        best_model = None
+        best_score = None
 
-            # 🔍 Debug dataset
-            st.subheader("🔍 Debug dataset prima del training")
-            st.write(f"X_train shape: {X_train.shape} | NaN: {np.isnan(X_train).sum()}")
-            st.write(f"y_train shape: {y_train.shape} ")
-            st.write(f"X_test shape: {X_test.shape} | NaN: {np.isnan(X_test).sum()}")
-            st.write(f"y_test shape: {y_test.shape} ")
+        st.subheader("🔍 Debug dataset prima del training")
+        st.write(f"X_train shape: {X_train.shape} | NaN: {np.isnan(X_train).sum()}")
+        st.write(f"y_train shape: {y_train.shape} | classi uniche: {np.unique(y_train)}")
+        st.write(f"X_test shape: {X_test.shape} | NaN: {np.isnan(X_test).sum()}")
+        st.write(f"y_test shape: {y_test.shape} | classi uniche: {np.unique(y_test)}")
 
-            # Funzione per calcolare ECE (solo classification)
-            def expected_calibration_error(y_true, y_prob, n_bins=10):
-                prob_true, prob_pred = calibration_curve(y_true, y_prob, n_bins=n_bins)
-                ece = np.sum(np.abs(prob_pred - prob_true) * np.histogram(y_prob, bins=n_bins)[0]) / len(y_prob)
-                return ece
+        # --- Hyperparameter grids ---
+        param_grids = {
+            "Random Forest": {
+                "n_estimators": [50, 100, 200, 300],
+                "max_depth": [3, 5, 7],
+                "min_samples_split": [2, 5, 10, 20]
+            },
+            "XGBoost": {
+                "n_estimators": [50, 100, 200, 300],
+                "max_depth": [3, 5, 7],
+                "learning_rate": [0.01, 0.05, 0.1]
+            },
+            "LightGBM": {
+                "n_estimators": [50, 100, 200, 300],
+                "num_leaves": [30, 50, 100],
+                "learning_rate": [0.01, 0.05, 0.1]
+            },
+            "CatBoost": {
+                "iterations": [50, 100, 200, 300],
+                "depth": [3, 5, 7],
+                "learning_rate": [0.01, 0.05, 0.1]
+            },
+            "Logistic Regression": {
+                "C": [0.01, 0.1, 1, 10],
+                "solver": ["lbfgs", "liblinear"]
+            },
+            "Linear Regression": {}  # niente da ottimizzare
+        }
 
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            total_models = len(models)
-            completed = 0
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        total_models = len(models)
+        completed = 0
 
-            # Loop sui modelli
-            for name, model in models.items():
-                completed += 1
-                status_text.text(f"⏳ Allenamento modello: {name} ({completed}/{total_models})...")
-                
-                try:
+        for name, model in models.items():
+            completed += 1
+            status_text.text(f"⏳ Allenamento + tuning: {name} ({completed}/{total_models})...")
+
+            try:
+                # Se il modello ha param_grid -> tuning
+                if name in param_grids and len(param_grids[name]) > 0:
+                    search = RandomizedSearchCV(
+                        model,
+                        param_distributions=param_grids[name],
+                        n_iter=10,              # numero combinazioni testate
+                        cv=3,                   # cross-validation
+                        scoring="f1_weighted" if problem_type == "classification" else "r2",
+                        n_jobs=-1,
+                        random_state=42
+                    )
+                    search.fit(X_train, y_train)
+                    model = search.best_estimator_
+                    st.info(f"🔧 Best params {name}: {search.best_params_}")
+                else:
+                    # Nessun tuning disponibile
                     model.fit(X_train, y_train)
 
-                    # Predizioni
-                    y_pred_train = model.predict(X_train)
-                    y_pred_test  = model.predict(X_test)
+                # --- Predizioni
+                y_pred_train = model.predict(X_train)
+                y_pred_test = model.predict(X_test)
 
-                    if problem_type == "classification":
-                        # Probabilità se disponibili
-                        y_prob_test = None
-                        try:
-                            if len(np.unique(y)) == 2:
-                                y_prob_test = model.predict_proba(X_test)[:,1]
-                            else:
-                                y_prob_test = model.predict_proba(X_test).max(axis=1)
-                        except Exception as e:
-                            st.warning(f"{name}: impossibile calcolare predict_proba ({e})")
+                if problem_type == "classification":
+                    metrics = {
+                        "Train Accuracy": accuracy_score(y_train, y_pred_train),
+                        "Test Accuracy": accuracy_score(y_test, y_pred_test),
+                        "Train F1": f1_score(y_train, y_pred_train, average="weighted"),
+                        "Test F1": f1_score(y_test, y_pred_test, average="weighted"),
+                    }
+                    score = metrics["Test F1"]
 
-                        metrics = {
-                            "Train Accuracy": accuracy_score(y_train, y_pred_train),
-                            "Test Accuracy": accuracy_score(y_test, y_pred_test),
-                            "Train F1": f1_score(y_train, y_pred_train, average="weighted"),
-                            "Test F1": f1_score(y_test, y_pred_test, average="weighted"),
-                        }
+                else:
+                    metrics = {
+                        "Train RMSE": np.sqrt(mean_squared_error(y_train, y_pred_train)),
+                        "Test RMSE": np.sqrt(mean_squared_error(y_test, y_pred_test)),
+                        "Train MAE": mean_absolute_error(y_train, y_pred_train),
+                        "Test MAE": mean_absolute_error(y_test, y_pred_test),
+                        "Train R2": r2_score(y_train, y_pred_train),
+                        "Test R2": r2_score(y_test, y_pred_test),
+                    }
+                    score = metrics["Test R2"]
 
-                        if y_prob_test is not None:
-                            try:
-                                metrics["Test AUC"] = roc_auc_score(y_test, model.predict_proba(X_test), multi_class="ovr")
-                            except:
-                                metrics["Test AUC"] = None
-                            try:
-                                metrics["Brier Score"] = brier_score_loss(y_test, y_prob_test)
-                                metrics["ECE"] = expected_calibration_error(y_test, y_prob_test)
-                            except:
-                                pass
+                results[name] = metrics
+                st.write(f"📊 Risultati parziali - {name}", metrics)
 
-                        score = metrics["Test F1"]
+                if score is not None and (best_score is None or score > best_score):
+                    best_score = score
+                    best_model = model
 
-                    else:  # Regression
-                        metrics = {
-                            "Train RMSE":  np.sqrt(mean_squared_error(y_train, y_pred_train)),
-                            "Test RMSE":   np.sqrt(mean_squared_error(y_test, y_pred_test)),
-                            "Train MAE":   mean_absolute_error(y_train, y_pred_train),
-                            "Test MAE":    mean_absolute_error(y_test, y_pred_test),
-                            "Train R2":    r2_score(y_train, y_pred_train),
-                            "Test R2":     r2_score(y_test, y_pred_test),
-                        }
-                        score = -metrics["Test RMSE"]
+            except Exception as e:
+                import traceback
+                st.error(f"❌ Errore durante tuning/training di {name}: {type(e).__name__} - {e}")
+                st.text(traceback.format_exc())
 
-                    # Salva metriche
-                    results[name] = metrics
-                    st.write(f"📊 Risultati parziali - {name}", metrics)
+            progress_bar.progress(completed / total_models)
 
-                    # Aggiorna best model
-                    if score is not None and (best_score is None or score > best_score):
-                        best_score = score
-                        best_model = model
+        status_text.text("✅ Training + tuning completato!")
 
-                except Exception as e:
-                    import traceback
-                    st.error(f"❌ Errore durante l'allenamento di {name}: {type(e).__name__} - {e}")
-                    st.text(traceback.format_exc())
-
-                progress_bar.progress(completed / total_models)
-
-            status_text.text("✅ Training completato!")
-
-            if best_model is None:
-                st.error("❌ Nessun modello è stato allenato correttamente.")
-            else:
-                st.success(f"🏆 Miglior modello: {best_model.__class__.__name__}")
-                st.write("### 📊 Risultati complessivi")
-                results_df = pd.DataFrame(results).T
-                st.write(results_df)
+        if len(results) == 0:
+            st.error("❌ Nessun modello è stato allenato correttamente.")
+        else:
+            st.success(f"🏆 Miglior modello: {best_model.__class__.__name__}")
+            st.write("### 📊 Risultati complessivi")
+            results_df = pd.DataFrame(results).T
+            st.write(results_df)
 
     # --- Grafici comparativi ---
     st.subheader("📉 Confronto modelli")
@@ -488,6 +504,7 @@ if target_column:
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
