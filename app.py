@@ -9,7 +9,7 @@ import numpy as np
 
 # ML librerie
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, mean_squared_error, r2_score, mean_absolute_error
 from sklearn.linear_model import LogisticRegression, LinearRegression
@@ -24,6 +24,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.experimental import enable_iterative_imputer  
 from sklearn.impute import IterativeImputer
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.compose import ColumnTransformer
+
 
 # GPT libreria
 from openai import OpenAI
@@ -212,9 +214,6 @@ if target_column:
     X = df[features]
     y = df[target_column]
 
-    # --- Encoding X ---
-    X = pd.get_dummies(X, drop_first=True)
-
     # --- Encoding y se categorico ---
     if y.dtype == "object" or y.nunique() < 20:
         problem_type = "classification"
@@ -244,39 +243,91 @@ if target_column:
     st.write(f"📊 Validation: {len(X_val)} ({len(X_val)/len(X):.1%})")
     st.write(f"📊 Test: {len(X_test)} ({len(X_test)/len(X):.1%})")
 
+# ------------------------------------------------------------
+# 🔧 Gestione missing values + preprocessing completo
+# ------------------------------------------------------------
+if missing_strategy:
+    # Separa colonne numeriche e categoriche
+    numeric_cols = X_train.select_dtypes(include=["int64", "float64"]).columns.tolist()
+    categorical_cols = X_train.select_dtypes(include=["object", "category"]).columns.tolist()
+
+    if missing_strategy == "rows":
+        X_train = pd.DataFrame(X_train).dropna()
+        X_val   = pd.DataFrame(X_val).dropna()
+        X_test  = pd.DataFrame(X_test).dropna()
+
+    elif missing_strategy == "cols":
+        X_train = pd.DataFrame(X_train).dropna(axis=1)
+        X_val   = pd.DataFrame(X_val).dropna(axis=1)
+        X_test  = pd.DataFrame(X_test).dropna(axis=1)
+
+    elif missing_strategy in ["mean", "median", "mode"]:
+        # --- Numeriche ---
+        if missing_strategy == "mean":
+            num_imputer = SimpleImputer(strategy="mean")
+        elif missing_strategy == "median":
+            num_imputer = SimpleImputer(strategy="median")
+        else:
+            num_imputer = SimpleImputer(strategy="most_frequent")
+
+        X_train[numeric_cols] = num_imputer.fit_transform(X_train[numeric_cols])
+        X_val[numeric_cols]   = num_imputer.transform(X_val[numeric_cols])
+        X_test[numeric_cols]  = num_imputer.transform(X_test[numeric_cols])
+
+        # --- Categoriche ---
+        cat_imputer = SimpleImputer(strategy="most_frequent")
+        X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
+        X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
+        X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
+
+    elif missing_strategy == "iterative":
+        # Iterative solo sulle numeriche
+        imputer = IterativeImputer(random_state=42)
+        X_train[numeric_cols] = imputer.fit_transform(X_train[numeric_cols])
+        X_val[numeric_cols]   = imputer.transform(X_val[numeric_cols])
+        X_test[numeric_cols]  = imputer.transform(X_test[numeric_cols])
+
+        # Categoriche → moda
+        cat_imputer = SimpleImputer(strategy="most_frequent")
+        X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
+        X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
+        X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
+
+    st.success(f"✅ Missing values gestiti con strategia: **{missing_strategy}**")
+
     # ------------------------------------------------------------
-    # 🔧 Gestione missing values
+    # 🔧 Scaling numeriche
     # ------------------------------------------------------------
-    if missing_strategy:
-        if missing_strategy == "rows":
-            X_train = pd.DataFrame(X_train).dropna()
-            X_val   = pd.DataFrame(X_val).dropna()
-            X_test  = pd.DataFrame(X_test).dropna()
+    if len(numeric_cols) > 0:
+        scaler = StandardScaler()
+        X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
+        X_val[numeric_cols]   = scaler.transform(X_val[numeric_cols])
+        X_test[numeric_cols]  = scaler.transform(X_test[numeric_cols])
 
-        elif missing_strategy == "cols":
-            X_train = pd.DataFrame(X_train).dropna(axis=1)
-            X_val   = pd.DataFrame(X_val).dropna(axis=1)
-            X_test  = pd.DataFrame(X_test).dropna(axis=1)
+    # ------------------------------------------------------------
+    # 🔧 One-Hot Encoding categoriche
+    # ------------------------------------------------------------
+    if len(categorical_cols) > 0:
+        encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
 
-        elif missing_strategy in ["mean", "median", "mode"]:
-            if missing_strategy == "mean":
-                imputer = SimpleImputer(strategy="mean")
-            elif missing_strategy == "median":
-                imputer = SimpleImputer(strategy="median")
-            else:
-                imputer = SimpleImputer(strategy="most_frequent")
+        train_encoded = encoder.fit_transform(X_train[categorical_cols])
+        val_encoded   = encoder.transform(X_val[categorical_cols])
+        test_encoded  = encoder.transform(X_test[categorical_cols])
 
-            X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
-            X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
-            X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
+        # Nuovi nomi colonne
+        encoded_cols = encoder.get_feature_names_out(categorical_cols)
 
-        elif missing_strategy == "iterative":
-            imputer = IterativeImputer(random_state=42)
-            X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
-            X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
-            X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
+        # Ricostruisci DataFrame
+        train_encoded = pd.DataFrame(train_encoded, columns=encoded_cols, index=X_train.index)
+        val_encoded   = pd.DataFrame(val_encoded, columns=encoded_cols, index=X_val.index)
+        test_encoded  = pd.DataFrame(test_encoded, columns=encoded_cols, index=X_test.index)
 
-        st.success(f"✅ Missing values gestiti con strategia: **{missing_strategy}**")
+        # Rimuovi categoriche originali e aggiungi le one-hot
+        X_train = pd.concat([X_train.drop(columns=categorical_cols), train_encoded], axis=1)
+        X_val   = pd.concat([X_val.drop(columns=categorical_cols), val_encoded], axis=1)
+        X_test  = pd.concat([X_test.drop(columns=categorical_cols), test_encoded], axis=1)
+
+    st.success("✅ Dati preprocessati: missing, scaling e one-hot encoding gestiti!")
 
     # ------------------------------------------------------------
     # 🧹 Pulizia y (target)
@@ -285,14 +336,15 @@ if target_column:
     y_train = y_train[~y_train.isin([np.inf, -np.inf])]
     y_train = y_train.reset_index(drop=True)
 
-    # ------------------------------------------------------------
-    # ⚖️ Scaling
-    # ------------------------------------------------------------
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_val   = scaler.transform(X_val)
-    X_test  = scaler.transform(X_test)
+    y_val = pd.Series(y_val).dropna()
+    y_val = y_val[~y_val.isin([np.inf, -np.inf])]
+    y_val = y_val.reset_index(drop=True)
 
+    y_test = pd.Series(y_test).dropna()
+    y_test = y_test[~y_test.isin([np.inf, -np.inf])]
+    y_test = y_test.reset_index(drop=True)
+
+    st.success("✅ Target pulito da NaN e valori infiniti")
     # ------------------------------------------------------------
     # ✨ Feature selection
     # ------------------------------------------------------------
@@ -543,6 +595,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
