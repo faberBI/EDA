@@ -23,7 +23,7 @@ from sklearn.metrics import brier_score_loss
 from openai import OpenAI
 import time
 
-api_key = "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"
+api_key = st.secrets["OPENAI_API_KEY"]
 
 st.set_page_config(page_title="EDA + ML Automatica", layout="wide")
 
@@ -366,4 +366,5 @@ if target_column:
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
