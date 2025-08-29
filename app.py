@@ -221,12 +221,6 @@ if target_column:
     st.write(f"📊 Validation: {len(X_val)} ({len(X_val)/len(X):.1%})")
     st.write(f"📊 Test: {len(X_test)} ({len(X_test)/len(X):.1%})")
 
-    # Feature scaling
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_val = scaler.transform(X_val)
-    X_test = scaler.transform(X_test)
-
     # ------------------------------------------------------------
     # 🔧 Gestione valori mancanti
     # ------------------------------------------------------------
@@ -383,8 +377,8 @@ if st.button("🚀 Avvia training"):
                             metrics["Test AUC"] = roc_auc_score(y_test, model.predict_proba(X_test), multi_class="ovr")
                         except:
                             metrics["Test AUC"] = None
-                        metrics["Brier Score"] = brier_score_loss(y_test, y_prob_test)
-                        metrics["ECE"] = expected_calibration_error(y_test, y_prob_test)
+                            metrics["Brier Score"] = brier_score_loss(y_test, y_prob_test)
+                            metrics["ECE"] = expected_calibration_error(y_test, y_prob_test)
 
                     score = metrics["Test F1"]
 
@@ -406,7 +400,9 @@ if st.button("🚀 Avvia training"):
                     best_model = model
 
             except Exception as e:
-                st.error(f"❌ Errore durante l'allenamento di {name}: {e}")
+                    import traceback
+                    st.error(f"❌ Errore durante l'allenamento di {name}: {type(e).__name__} - {e}")
+                    st.text(traceback.format_exc())
 
             progress_bar.progress(completed / total_models)
 
@@ -507,6 +503,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
