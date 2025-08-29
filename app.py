@@ -367,32 +367,33 @@ if missing_strategy:
     training_ready = True
 
     # ------------------------------------------------------------
-    # 🔘 Scelta modelli
-    # ------------------------------------------------------------
-    st.markdown("### ⚙️ Scegli i modelli da allenare")
-    if problem_type == "classification":
-        if st.checkbox("Logistic Regression"):
-            models["Logistic Regression"] = LogisticRegression(max_iter=1000)
-        if st.checkbox("Random Forest"):
-            models["Random Forest"] = RandomForestClassifier()
-        if st.checkbox("XGBoost"):
-            models["XGBoost"] = XGBClassifier(eval_metric="mlogloss", use_label_encoder=False)
-        if st.checkbox("LightGBM"):
-            models["LightGBM"] = LGBMClassifier()
-        if st.checkbox("CatBoost"):
-            models["CatBoost"] = CatBoostClassifier(verbose=0)
-    else:
-        if st.checkbox("Linear Regression"):
-            models["Linear Regression"] = LinearRegression()
-        if st.checkbox("Random Forest"):
-            models["Random Forest"] = RandomForestRegressor()
-        if st.checkbox("XGBoost"):
-            models["XGBoost"] = XGBRegressor()
-        if st.checkbox("LightGBM"):
-            models["LightGBM"] = LGBMRegressor()
-        if st.checkbox("CatBoost"):
-            models["CatBoost"] = CatBoostRegressor(verbose=0)
+# 🔘 Scelta modelli
+# ------------------------------------------------------------
+st.markdown("### ⚙️ Scegli i modelli da allenare")
 
+models = {}
+if problem_type == "classification":
+    if st.checkbox("Logistic Regression"):
+        models["Logistic Regression"] = LogisticRegression(max_iter=1000)
+    if st.checkbox("Random Forest"):
+        models["Random Forest"] = RandomForestClassifier()
+    if st.checkbox("XGBoost"):
+        models["XGBoost"] = XGBClassifier(eval_metric="mlogloss", use_label_encoder=False)
+    if st.checkbox("LightGBM"):
+        models["LightGBM"] = LGBMClassifier()
+    if st.checkbox("CatBoost"):
+        models["CatBoost"] = CatBoostClassifier(verbose=0)
+else:
+    if st.checkbox("Linear Regression"):
+        models["Linear Regression"] = LinearRegression()
+    if st.checkbox("Random Forest"):
+        models["Random Forest"] = RandomForestRegressor()
+    if st.checkbox("XGBoost"):
+        models["XGBoost"] = XGBRegressor()
+    if st.checkbox("LightGBM"):
+        models["LightGBM"] = LGBMRegressor()
+    if st.checkbox("CatBoost"):
+        models["CatBoost"] = CatBoostRegressor(verbose=0)
 # ============================================================
 # 🚀 Avvio Training
 # ============================================================
@@ -598,6 +599,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
