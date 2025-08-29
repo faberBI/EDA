@@ -263,6 +263,15 @@ if target_column:
     else:
         selector = SelectKBest(score_func=f_regression, k=k)
 
+    st.subheader("🔍 Debug X_train prima del Feature Selection")
+
+    st.write("NaN in X_train:", np.isnan(X_train).sum().sum())
+    st.write("Inf in X_train:", np.isinf(X_train).sum().sum())
+
+    if isinstance(X_train, pd.DataFrame):
+        st.write("Colonne con NaN:", X_train.columns[X_train.isna().any()].tolist())
+        st.write("Colonne con Inf:", X_train.columns[np.isinf(X_train).any()].tolist())
+    
     X_train = selector.fit_transform(X_train, y_train)
     X_val   = selector.transform(X_val)
     X_test  = selector.transform(X_test)
@@ -504,6 +513,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
