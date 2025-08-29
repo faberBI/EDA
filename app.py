@@ -19,7 +19,11 @@ from catboost import CatBoostClassifier, CatBoostRegressor
 import joblib
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
+# GPT libreria
+from openai import OpenAI
+import time
 
+api_key = "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"
 
 st.set_page_config(page_title="EDA + ML Automatica", layout="wide")
 
@@ -322,9 +326,44 @@ if target_column:
     ax.set_ylabel("Predizione")
     ax.set_title("Scatter Predizioni vs Valori Reali (Miglior modello)")
     st.pyplot(fig)
+    
+    client = OpenAI(api_key=api_key)
+
+    # Creiamo un dataframe riassuntivo dei risultati
+    summary_df = results_df.reset_index().rename(columns={"index": "Model"})
+
+    prompt = f"""
+    Ho allenato diversi modelli di Machine Learning con i seguenti risultati su Train e Test:
+
+    {summary_df.to_string(index=False)}
+
+    Obiettivi del commento:
+    - Confronta le performance Train vs Test per evidenziare eventuale overfitting.
+    - Sottolinea quale modello ha le performance migliori sul Test set.
+    - Commenta robustezza, generalizzazione e eventuali rischi.
+    - Suggerisci il modello più adatto come "best model".
+    """
+
+    if st.button("💬 Genera commento GPT"):
+        for _ in range(3):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                    {"role": "system", "content": "Sei un esperto di machine learning che commenta i risultati dei modelli."},
+                    {"role": "user", "content": prompt}
+                    ]
+                )
+                st.subheader("📑 Commento di GPT")
+                st.write(response.choices[0].message.content)
+                break
+            except Exception as e:
+                st.warning(f"Errore OpenAI ({e}), riprovo tra 5 secondi...")
+                time.sleep(5)
 
     # --- Download modello migliore ---
     st.subheader("💾 Scarica il miglior modello")
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
