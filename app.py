@@ -246,14 +246,12 @@ if missing_strategy:
         else:  # mode
             imputer = SimpleImputer(strategy="most_frequent")
 
-        # 🔑 Manteniamo le colonne
         X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
         X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
         X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
 
-    elif missing_strategy == "missforest":
-        from missingpy import MissForest
-        imputer = MissForest()
+    elif missing_strategy == "iterative":
+        imputer = IterativeImputer(random_state=42)
         X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
         X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
         X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
@@ -262,7 +260,6 @@ if missing_strategy:
     st.write("✅ Missing values gestiti con strategia:", missing_strategy)
     st.write("📊 NaN rimasti in X_train:", X_train.isna().sum().sum())
 
-    
 
     # Feature scaling
     scaler = StandardScaler()
@@ -324,7 +321,7 @@ if missing_strategy:
     # ------------------------------------------------------------
     # 🚀 Avvio Training
     # ------------------------------------------------------------
-    # --- Avvio Training ---
+
 if st.button("🚀 Avvia training"):
     if len(models) == 0:
         st.warning("⚠️ Seleziona almeno un modello per avviare il training.")
@@ -530,6 +527,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
