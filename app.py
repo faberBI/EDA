@@ -32,6 +32,7 @@ api_key = st.secrets["OPENAI_API_KEY"]
 st.set_page_config(page_title="EDA + ML Automatica", layout="wide")
 
 st.title("🔎 Exploratory Data Analysis + ML App")
+target_column = None 
 
 # Upload file
 uploaded_file = st.file_uploader("Carica un dataset (.csv o .xlsx)", type=["csv", "xlsx"])
@@ -167,47 +168,6 @@ if uploaded_file is not None:
     st.subheader("💾 Scarica Dataset Elaborato")
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Scarica CSV", csv, "dataset_elaborato.csv", "text/csv")
-
-# ============================================================
-# 🚀 SEZIONE MACHINE LEARNING
-# ============================================================
-st.header("⚡ Machine Learning Automatica")
-
-if target_column:
-    X = df.drop(columns=[target_column])
-    y = df[target_column]
-
-    # Encoding variabili categoriche
-    X = pd.get_dummies(X, drop_first=True)
-
-    # Encoding target se categorico
-    if y.dtype == "object" or y.nunique() < 20:
-        problem_type = "classification"
-        le = LabelEncoder()
-        y = le.fit_transform(y)
-    else:
-        problem_type = "regression"
-
-    st.write(f"🔍 Rilevato problema di **{problem_type}**")
-
-    # --- Train-validation-test split interattivo ---
-    st.markdown("### 📂 Train / Validation / Test Split")
-    test_size = st.slider("Percentuale Test Set (%)", 10, 40, 20) / 100
-    val_size = st.slider("Percentuale Validation Set (%)", 10, 40, 20) / 100
-
-    # Primo split: train vs temp
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=(test_size + val_size), random_state=42
-    )
-    # Secondo split: validation vs test
-    relative_val_size = val_size / (test_size + val_size)
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=(1 - relative_val_size), random_state=42
-    )
-
-    st.write(f"📊 Train: {len(X_train)} ({len(X_train)/len(X):.1%})")
-    st.write(f"📊 Validation: {len(X_val)} ({len(X_val)/len(X):.1%})")
-    st.write(f"📊 Test: {len(X_test)} ({len(X_test)/len(X):.1%})")
 
 # ============================================================
 # 🚀 SEZIONE MACHINE LEARNING
@@ -510,6 +470,7 @@ if target_column:
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
