@@ -42,14 +42,19 @@ df = None  # inizializzo df per evitare NameError
 # ===============================
 # 📂 Upload file
 # ===============================
-uploaded_file = st.file_uploader("Carica un dataset (.csv o .xlsx)", type=["csv", "xlsx"])
+uploaded_file = st.file_uploader("📂 Carica un file CSV", type=["csv"])
 
 if uploaded_file is not None:
-    # --- Lettura file
-    if uploaded_file.name.endswith(".csv"):
-        df = pd.read_csv(uploaded_file)
-    elif uploaded_file.name.endswith(".xlsx"):
-        df = pd.read_excel(uploaded_file)
+    try:
+        # Prova prima con utf-8
+        df = pd.read_csv(uploaded_file, encoding="utf-8")
+    except UnicodeDecodeError:
+        try:
+            # Fallback a latin1
+            df = pd.read_csv(uploaded_file, encoding="latin1")
+        except Exception as e:
+            st.error(f"❌ Errore durante la lettura del file: {e}")
+            df = None
 
     # --- Anteprima dataset
     st.subheader("📊 Anteprima del Dataset")
@@ -599,6 +604,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
