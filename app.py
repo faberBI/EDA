@@ -21,7 +21,8 @@ import joblib
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss
 from sklearn.impute import SimpleImputer
-from missingpy import MissForest  
+from sklearn.experimental import enable_iterative_imputer  
+from sklearn.impute import IterativeImputer
 # GPT libreria
 from openai import OpenAI
 import time
@@ -208,52 +209,110 @@ if target_column:
     st.write(f"📊 Validation: {len(X_val)} ({len(X_val)/len(X):.1%})")
     st.write(f"📊 Test: {len(X_test)} ({len(X_test)/len(X):.1%})")
 
+# ============================================================
+# 🚀 SEZIONE MACHINE LEARNING
+# ============================================================
+st.header("⚡ Machine Learning Automatica")
+
+if target_column:
+    X = df.drop(columns=[target_column])
+    y = df[target_column]
+
+    # Encoding variabili categoriche
+    X = pd.get_dummies(X, drop_first=True)
+
+    # Encoding target se categorico
+    if y.dtype == "object" or y.nunique() < 20:
+        problem_type = "classification"
+        le = LabelEncoder()
+        y = le.fit_transform(y)
+    else:
+        problem_type = "regression"
+
+    st.write(f"🔍 Rilevato problema di **{problem_type}**")
+
+    # --- Train-validation-test split interattivo ---
+    st.markdown("### 📂 Train / Validation / Test Split")
+    test_size = st.slider("Percentuale Test Set (%)", 10, 40, 20) / 100
+    val_size = st.slider("Percentuale Validation Set (%)", 10, 40, 20) / 100
+
+    # Primo split: train vs temp
+    X_train, X_temp, y_train, y_temp = train_test_split(
+        X, y, test_size=(test_size + val_size), random_state=42
+    )
+    # Secondo split: validation vs test
+    relative_val_size = val_size / (test_size + val_size)
+    X_val, X_test, y_val, y_test = train_test_split(
+        X_temp, y_temp, test_size=(1 - relative_val_size), random_state=42
+    )
+
+    st.write(f"📊 Train: {len(X_train)} ({len(X_train)/len(X):.1%})")
+    st.write(f"📊 Validation: {len(X_val)} ({len(X_val)/len(X):.1%})")
+    st.write(f"📊 Test: {len(X_test)} ({len(X_test)/len(X):.1%})")
+
+    # Feature scaling
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_val = scaler.transform(X_val)
+    X_test = scaler.transform(X_test)
+
+    # ------------------------------------------------------------
+    # 🔧 Gestione valori mancanti
+    # ------------------------------------------------------------
     if missing_strategy:
         st.markdown("### 🔧 Applicazione della strategia di imputazione")
 
-    if missing_strategy == "rows":
-        # Rimuoviamo le righe con missing solo nei set X
-        mask_train = ~pd.DataFrame(X_train).isnull().any(axis=1)
-        X_train, y_train = X_train[mask_train], y_train[mask_train]
+        if missing_strategy == "rows":
+            # Rimuoviamo le righe con missing
+            mask_train = ~pd.DataFrame(X_train).isnull().any(axis=1)
+            X_train, y_train = X_train[mask_train], y_train[mask_train]
 
-        mask_val = ~pd.DataFrame(X_val).isnull().any(axis=1)
-        X_val, y_val = X_val[mask_val], y_val[mask_val]
+            mask_val = ~pd.DataFrame(X_val).isnull().any(axis=1)
+            X_val, y_val = X_val[mask_val], y_val[mask_val]
 
-        mask_test = ~pd.DataFrame(X_test).isnull().any(axis=1)
-        X_test, y_test = X_test[mask_test], y_test[mask_test]
+            mask_test = ~pd.DataFrame(X_test).isnull().any(axis=1)
+            X_test, y_test = X_test[mask_test], y_test[mask_test]
 
-        st.success("✅ Righe con valori mancanti rimosse dopo lo split")
+            st.success("✅ Righe con valori mancanti rimosse dopo lo split")
 
-    elif missing_strategy == "cols":
-        # Rimuoviamo le colonne con missing
-        mask_cols = ~pd.DataFrame(X_train).isnull().any()
-        X_train = X_train[:, mask_cols.values]
-        X_val   = X_val[:, mask_cols.values]
-        X_test  = X_test[:, mask_cols.values]
+        elif missing_strategy == "cols":
+            # Rimuoviamo le colonne con missing
+            mask_cols = ~pd.DataFrame(X_train).isnull().any()
+            X_train = X_train[:, mask_cols.values]
+            X_val   = X_val[:, mask_cols.values]
+            X_test  = X_test[:, mask_cols.values]
 
-        st.success("✅ Colonne con valori mancanti rimosse dopo lo split")
+            st.success("✅ Colonne con valori mancanti rimosse dopo lo split")
 
-    elif missing_strategy in ["mean", "median", "mode"]:
-        if missing_strategy == "mean":
-            imputer = SimpleImputer(strategy="mean")
-        elif missing_strategy == "median":
-            imputer = SimpleImputer(strategy="median")
-        else:
-            imputer = SimpleImputer(strategy="most_frequent")
+        elif missing_strategy in ["mean", "median", "mode"]:
+            if missing_strategy == "mean":
+                imputer = SimpleImputer(strategy="mean")
+            elif missing_strategy == "median":
+                imputer = SimpleImputer(strategy="median")
+            else:
+                imputer = SimpleImputer(strategy="most_frequent")
 
-        X_train = imputer.fit_transform(X_train)
-        X_val   = imputer.transform(X_val)
-        X_test  = imputer.transform(X_test)
+            X_train = imputer.fit_transform(X_train)
+            X_val   = imputer.transform(X_val)
+            X_test  = imputer.transform(X_test)
 
-        st.success(f"✅ Missing values imputati con {missing_strategy}")
+            st.success(f"✅ Missing values imputati con {missing_strategy}")
 
-    elif missing_strategy == "missforest":
-        imputer = MissForest(random_state=42, n_estimators=100)
-        X_train = imputer.fit_transform(X_train)
-        X_val   = imputer.transform(X_val)
-        X_test  = imputer.transform(X_test)
+        elif missing_strategy == "missforest":
+            # 🔥 Sostituto di MissForest con IterativeImputer
+            from sklearn.experimental import enable_iterative_imputer  # noqa
+            from sklearn.impute import IterativeImputer
+            from sklearn.ensemble import RandomForestRegressor
 
-        st.success("✅ Missing values imputati con MissForest")
+            imputer = IterativeImputer(
+                estimator=RandomForestRegressor(n_estimators=100, random_state=42),
+                random_state=42
+            )
+            X_train = imputer.fit_transform(X_train)
+            X_val   = imputer.transform(X_val)
+            X_test  = imputer.transform(X_test)
+
+            st.success("✅ Missing values imputati con IterativeImputer (RandomForest)")
 
 
     # Feature scaling
@@ -451,6 +510,7 @@ if target_column:
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
