@@ -115,16 +115,19 @@ if uploaded_file is not None:
             missing_strategy = "iterative"
             st.info("ℹ️ Verrà usato IterativeImputer dopo lo split (solo su X, non su y).")
 
-    # ------------------------------------------------------------
-    # 🎯 Selezione target
-    # ------------------------------------------------------------
-    target_column = st.selectbox("Scegli la variabile target (y)", df.columns)
+    st.markdown("### 🎯 Seleziona la variabile target")
+    target_column = st.selectbox("Variabile target (y)", df.columns)
 
+    if target_column:
     # --- Distribuzione target
-    st.subheader(f"📌 Distribuzione della variabile target: {target_column}")
-    fig, ax = plt.subplots()
-    sns.histplot(df[target_column].dropna(), kde=True, ax=ax)
-    st.pyplot(fig, use_container_width=False)
+        st.subheader(f"📌 Distribuzione della variabile target: {target_column}")
+        fig, ax = plt.subplots()
+        if df[target_column].dtype in ["object", "category"]:
+            sns.countplot(x=df[target_column], ax=ax)
+            plt.xticks(rotation=45)
+        else:
+            sns.histplot(df[target_column].dropna(), kde=True, ax=ax)
+        st.pyplot(fig, use_container_width=False)
 
     # --- Analisi univariata numerica
     st.subheader("📊 Distribuzioni Univariate (Numeriche)")
@@ -595,6 +598,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
