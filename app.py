@@ -258,8 +258,7 @@ if target_column:
     # ------------------------------------------------------------
     if missing_strategy:
         numeric_cols = X_train.select_dtypes(include=["int64", "float64"]).columns.tolist()
-        categorical_cols = X_train.select_dtypes(include=["object", "category"]).columns.tolist()
-
+        categorical_cols = X_train.select_dtypes(include=["object", "category", "string"]).columns.tolist()
         if missing_strategy == "rows":
             X_train = pd.DataFrame(X_train).dropna()
             X_val   = pd.DataFrame(X_val).dropna()
@@ -579,6 +578,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
