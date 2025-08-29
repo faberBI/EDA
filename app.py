@@ -168,15 +168,22 @@ if uploaded_file is not None:
     st.pyplot(fig)
 
     # --- PCA
+# --- PCA ---
     st.subheader("📊 PCA Analysis")
-    fig = eda.pca_analysis(return_fig=True)
-    st.pyplot(fig)
+    if eda.numeric_df.isna().sum().sum() == 0:  # nessun missing
+        fig = eda.pca_analysis(return_fig=True)
+        st.pyplot(fig)
+    else:
+        st.warning("⚠️ PCA saltata perché ci sono valori mancanti nelle variabili numeriche.")
 
-    # --- Clustering
+# --- Clustering ---
     st.subheader("🤖 Clustering Analysis")
-    figs = eda.clustering_analysis(return_fig=True)
-    for f in figs:
-        st.pyplot(f)
+    if eda.numeric_df.isna().sum().sum() == 0:  # nessun missing
+        figs = eda.clustering_analysis(return_fig=True)
+        for f in figs:
+            st.pyplot(f)
+    else:
+        st.warning("⚠️ Clustering saltato perché ci sono valori mancanti nelle variabili numeriche.")
 
     # --- Test di normalità
     st.subheader("📏 Test di Normalità (Shapiro-Wilk)")
@@ -536,6 +543,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
