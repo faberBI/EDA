@@ -302,14 +302,14 @@ if target_column:
         else:
             results = {}
             best_model = None
-            best_score = -9999
+            best_score = None
 
             # 🔍 Debug dataset
             st.subheader("🔍 Debug dataset prima del training")
             st.write(f"X_train shape: {X_train.shape} | NaN: {np.isnan(X_train).sum()}")
-            st.write(f"y_train shape: {y_train.shape} | classi uniche: {np.unique(y_train)}")
+            st.write(f"y_train shape: {y_train.shape} ")
             st.write(f"X_test shape: {X_test.shape} | NaN: {np.isnan(X_test).sum()}")
-            st.write(f"y_test shape: {y_test.shape} | classi uniche: {np.unique(y_test)}")
+            st.write(f"y_test shape: {y_test.shape} ")
 
             # Funzione per calcolare ECE (solo classification)
             def expected_calibration_error(y_true, y_prob, n_bins=10):
@@ -381,7 +381,7 @@ if target_column:
                     st.write(f"📊 Risultati parziali - {name}", metrics)
 
                     # Aggiorna best model
-                    if score is not None and score > best_score:
+                    if score is not None and (best_score is None or score > best_score):
                         best_score = score
                         best_model = model
 
@@ -488,6 +488,7 @@ if target_column:
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
