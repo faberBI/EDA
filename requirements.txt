@@ -32,5 +32,6 @@ joblib
 setuptools
 wheel
 ppscore
+openpyxl
 
 
