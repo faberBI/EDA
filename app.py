@@ -167,7 +167,7 @@ if uploaded_file is not None:
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Scarica CSV", csv, "dataset_elaborato.csv", "text/csv")
 
-    # ============================================================
+# ============================================================
 # 🚀 SEZIONE MACHINE LEARNING
 # ============================================================
 st.header("⚡ Machine Learning Automatica")
@@ -208,14 +208,8 @@ if target_column:
     st.write(f"📊 Validation: {len(X_val)} ({len(X_val)/len(X):.1%})")
     st.write(f"📊 Test: {len(X_test)} ({len(X_test)/len(X):.1%})")
 
-    # Feature scaling
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_val = scaler.transform(X_val)
-    X_test = scaler.transform(X_test)
-
     if missing_strategy:
-    st.markdown("### 🔧 Applicazione della strategia di imputazione")
+        st.markdown("### 🔧 Applicazione della strategia di imputazione")
 
     if missing_strategy == "rows":
         # Rimuoviamo le righe con missing solo nei set X
@@ -262,15 +256,17 @@ if target_column:
         st.success("✅ Missing values imputati con MissForest")
 
 
-
-
-
-
-
-    
+    # Feature scaling
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_val = scaler.transform(X_val)
+    X_test = scaler.transform(X_test)
+   
     # Feature selection
     st.markdown("### ✨ Feature Selection")
-    k = st.slider("Numero di features da selezionare", 5, X.shape[1], min(20, X.shape[1]))
+    k = st.slider("Numero di features da selezionare", 
+              5, min(X.shape[1], X_train.shape[1]), 
+              min(20, X_train.shape[1]))
     if problem_type == "classification":
         selector = SelectKBest(score_func=f_classif, k=k)
     else:
@@ -455,6 +451,7 @@ if target_column:
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
