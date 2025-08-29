@@ -185,6 +185,7 @@ if missing.sum() > 0:
 # 🚀 SEZIONE MACHINE LEARNING
 # ============================================================
 st.header("⚡ Machine Learning Automatica")
+models = {} 
 
 if target_column:
     features = [col for col in df.columns if col != target_column]
@@ -332,8 +333,11 @@ else:
     # 🚀 Avvio Training
     # ------------------------------------------------------------
 
+# 🚀 Avvio Training
 if st.button("🚀 Avvia training"):
-    if len(models) == 0:
+    if not training_ready:
+        st.warning("⚠️ Devi prima selezionare una colonna target e preparare i dati.")
+    elif len(models) == 0:
         st.warning("⚠️ Seleziona almeno un modello per avviare il training.")
     else:
         results = {}
@@ -372,26 +376,28 @@ if st.button("🚀 Avvia training"):
                 "C": [0.01, 0.1, 1, 10],
                 "solver": ["lbfgs", "liblinear"]
             },
-            "Linear Regression": {}  # niente da ottimizzare
+            "Linear Regression": {}  # niente tuning
         }
 
+        # Progress bar
         progress_bar = st.progress(0)
         status_text = st.empty()
         total_models = len(models)
         completed = 0
 
+        # Loop sui modelli
         for name, model in models.items():
             completed += 1
             status_text.text(f"⏳ Allenamento + tuning: {name} ({completed}/{total_models})...")
 
             try:
-                # Se il modello ha param_grid -> tuning
+                # 🔧 Hyperparameter tuning (se disponibile)
                 if name in param_grids and len(param_grids[name]) > 0:
                     search = RandomizedSearchCV(
                         model,
                         param_distributions=param_grids[name],
-                        n_iter=10,              # numero combinazioni testate
-                        cv=3,                   # cross-validation
+                        n_iter=10,
+                        cv=3,
                         scoring="f1_weighted" if problem_type == "classification" else "r2",
                         n_jobs=-1,
                         random_state=42
@@ -400,7 +406,6 @@ if st.button("🚀 Avvia training"):
                     model = search.best_estimator_
                     st.info(f"🔧 Best params {name}: {search.best_params_}")
                 else:
-                    # Nessun tuning disponibile
                     model.fit(X_train, y_train)
 
                 # --- Predizioni
@@ -416,7 +421,7 @@ if st.button("🚀 Avvia training"):
                     }
                     score = metrics["Test F1"]
 
-                else:
+                else:  # regression
                     metrics = {
                         "Train RMSE": np.sqrt(mean_squared_error(y_train, y_pred_train)),
                         "Test RMSE": np.sqrt(mean_squared_error(y_test, y_pred_test)),
@@ -430,26 +435,29 @@ if st.button("🚀 Avvia training"):
                 results[name] = metrics
                 st.write(f"📊 Risultati parziali - {name}", metrics)
 
+                # Aggiorno miglior modello
                 if score is not None and (best_score is None or score > best_score):
                     best_score = score
                     best_model = model
 
             except Exception as e:
                 import traceback
-                st.error(f"❌ Errore durante tuning/training di {name}: {type(e).__name__} - {e}")
+                st.error(f"❌ Errore durante training/tuning di {name}: {type(e).__name__} - {e}")
                 st.text(traceback.format_exc())
 
             progress_bar.progress(completed / total_models)
 
         status_text.text("✅ Training + tuning completato!")
 
+        # --- Risultati finali
         if len(results) == 0:
             st.error("❌ Nessun modello è stato allenato correttamente.")
         else:
             st.success(f"🏆 Miglior modello: {best_model.__class__.__name__}")
-            st.write("### 📊 Risultati complessivi")
             results_df = pd.DataFrame(results).T
+            st.write("### 📊 Risultati complessivi")
             st.write(results_df)
+
 
     # --- Grafici comparativi ---
     st.subheader("📉 Confronto modelli")
@@ -537,6 +545,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
