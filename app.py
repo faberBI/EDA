@@ -80,7 +80,7 @@ if uploaded_file is not None:
 # ------------------------------------------------------------
 
 # 👀 Calcola i missing sul dataset (usa X_train se sei già dopo lo split)
-missing = X_train.isna().sum()
+missing = df.isna().sum()
 
 missing_strategy = None  
 
@@ -190,17 +190,21 @@ if missing.sum() > 0:  # se ci sono NaN in almeno una colonna
 # 🚀 SEZIONE MACHINE LEARNING
 # ============================================================
 st.header("⚡ Machine Learning Automatica")
-models = {} 
+
+# Dizionario modelli
+models = {}
+training_ready = False  
 
 if target_column:
+    # --- Features & Target ---
     features = [col for col in df.columns if col != target_column]
     X = df[features]
     y = df[target_column]
 
-    # Encoding variabili categoriche
+    # --- Encoding X ---
     X = pd.get_dummies(X, drop_first=True)
 
-    # Encoding target se categorico
+    # --- Encoding y se categorico ---
     if y.dtype == "object" or y.nunique() < 20:
         problem_type = "classification"
         le = LabelEncoder()
@@ -229,61 +233,58 @@ if target_column:
     st.write(f"📊 Validation: {len(X_val)} ({len(X_val)/len(X):.1%})")
     st.write(f"📊 Test: {len(X_test)} ({len(X_test)/len(X):.1%})")
 
-# ------------------------------------------------------------
-# 🔧 Applicazione strategia
-# ------------------------------------------------------------
-if missing_strategy:
-    if missing_strategy == "rows":
-        X_train = pd.DataFrame(X_train).dropna()
-        X_val   = pd.DataFrame(X_val).dropna()
-        X_test  = pd.DataFrame(X_test).dropna()
+    # ------------------------------------------------------------
+    # 🔧 Gestione missing values
+    # ------------------------------------------------------------
+    if missing_strategy:
+        if missing_strategy == "rows":
+            X_train = pd.DataFrame(X_train).dropna()
+            X_val   = pd.DataFrame(X_val).dropna()
+            X_test  = pd.DataFrame(X_test).dropna()
 
-    elif missing_strategy == "cols":
-        X_train = pd.DataFrame(X_train).dropna(axis=1)
-        X_val   = pd.DataFrame(X_val).dropna(axis=1)
-        X_test  = pd.DataFrame(X_test).dropna(axis=1)
+        elif missing_strategy == "cols":
+            X_train = pd.DataFrame(X_train).dropna(axis=1)
+            X_val   = pd.DataFrame(X_val).dropna(axis=1)
+            X_test  = pd.DataFrame(X_test).dropna(axis=1)
 
-    elif missing_strategy in ["mean", "median", "mode"]:
-        if missing_strategy == "mean":
-            imputer = SimpleImputer(strategy="mean")
-        elif missing_strategy == "median":
-            imputer = SimpleImputer(strategy="median")
-        else:  # mode
-            imputer = SimpleImputer(strategy="most_frequent")
+        elif missing_strategy in ["mean", "median", "mode"]:
+            if missing_strategy == "mean":
+                imputer = SimpleImputer(strategy="mean")
+            elif missing_strategy == "median":
+                imputer = SimpleImputer(strategy="median")
+            else:
+                imputer = SimpleImputer(strategy="most_frequent")
 
-        X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
-        X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
-        X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
+            X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
+            X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
+            X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
 
-    elif missing_strategy == "iterative":
-        imputer = IterativeImputer(random_state=42)
-        X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
-        X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
-        X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
+        elif missing_strategy == "iterative":
+            imputer = IterativeImputer(random_state=42)
+            X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
+            X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
+            X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
 
-    # Debug info (Streamlit)
-    st.write("✅ Missing values gestiti con strategia:", missing_strategy)
-    st.write("📊 NaN rimasti in X_train:", X_train.isna().sum().sum())
+        st.success(f"✅ Missing values gestiti con strategia: **{missing_strategy}**")
 
-# ------------------------------------------------------------
-# 🧹 Pulizia y (target)
-# ------------------------------------------------------------
-if isinstance(y_train, pd.Series):
-    y_train = y_train.dropna()
-    y_train = y_train[~y_train.isin([np.inf, -np.inf])]
-else:
+    # ------------------------------------------------------------
+    # 🧹 Pulizia y (target)
+    # ------------------------------------------------------------
     y_train = pd.Series(y_train).dropna()
     y_train = y_train[~y_train.isin([np.inf, -np.inf])]
-
     y_train = y_train.reset_index(drop=True)
 
-    # Feature scaling
+    # ------------------------------------------------------------
+    # ⚖️ Scaling
+    # ------------------------------------------------------------
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_val   = scaler.transform(X_val)
     X_test  = scaler.transform(X_test)
 
-    # Feature selection
+    # ------------------------------------------------------------
+    # ✨ Feature selection
+    # ------------------------------------------------------------
     st.markdown("### ✨ Feature Selection")
     k = st.slider("Numero di features da selezionare", 
                   5, min(X.shape[1], X_train.shape[1]), 
@@ -293,24 +294,16 @@ else:
     else:
         selector = SelectKBest(score_func=f_regression, k=k)
 
-    st.subheader("🔍 Debug X_train prima del Feature Selection")
-
-    st.write("NaN in X_train:", np.isnan(X_train).sum().sum())
-    st.write("Inf in X_train:", np.isinf(X_train).sum().sum())
-
-    if isinstance(X_train, pd.DataFrame):
-        st.write("Colonne con NaN:", X_train.columns[X_train.isna().any()].tolist())
-        st.write("Colonne con Inf:", X_train.columns[np.isinf(X_train).any()].tolist())
-    
     X_train = selector.fit_transform(X_train, y_train)
     X_val   = selector.transform(X_val)
     X_test  = selector.transform(X_test)
+
+    training_ready = True
 
     # ------------------------------------------------------------
     # 🔘 Scelta modelli
     # ------------------------------------------------------------
     st.markdown("### ⚙️ Scegli i modelli da allenare")
-    models = {}
     if problem_type == "classification":
         if st.checkbox("Logistic Regression"):
             models["Logistic Regression"] = LogisticRegression(max_iter=1000)
@@ -334,11 +327,9 @@ else:
         if st.checkbox("CatBoost"):
             models["CatBoost"] = CatBoostRegressor(verbose=0)
 
-    # ------------------------------------------------------------
-    # 🚀 Avvio Training
-    # ------------------------------------------------------------
-
+# ============================================================
 # 🚀 Avvio Training
+# ============================================================
 if st.button("🚀 Avvia training"):
     if not training_ready:
         st.warning("⚠️ Devi prima selezionare una colonna target e preparare i dati.")
@@ -350,30 +341,28 @@ if st.button("🚀 Avvia training"):
         best_score = None
 
         st.subheader("🔍 Debug dataset prima del training")
-        st.write(f"X_train shape: {X_train.shape} | NaN: {np.isnan(X_train).sum()}")
-        st.write(f"y_train shape: {y_train.shape} | classi uniche: {np.unique(y_train)}")
-        st.write(f"X_test shape: {X_test.shape} | NaN: {np.isnan(X_test).sum()}")
-        st.write(f"y_test shape: {y_test.shape} | classi uniche: {np.unique(y_test)}")
+        st.write(f"X_train shape: {X_train.shape}")
+        st.write(f"y_train shape: {y_train.shape}")
 
         # --- Hyperparameter grids ---
         param_grids = {
             "Random Forest": {
-                "n_estimators": [50, 100, 200, 300],
+                "n_estimators": [50, 100, 200],
                 "max_depth": [3, 5, 7],
-                "min_samples_split": [2, 5, 10, 20]
+                "min_samples_split": [2, 5, 10]
             },
             "XGBoost": {
-                "n_estimators": [50, 100, 200, 300],
+                "n_estimators": [50, 100, 200],
                 "max_depth": [3, 5, 7],
                 "learning_rate": [0.01, 0.05, 0.1]
             },
             "LightGBM": {
-                "n_estimators": [50, 100, 200, 300],
-                "num_leaves": [30, 50, 100],
+                "n_estimators": [50, 100, 200],
+                "num_leaves": [31, 50, 100],
                 "learning_rate": [0.01, 0.05, 0.1]
             },
             "CatBoost": {
-                "iterations": [50, 100, 200, 300],
+                "iterations": [50, 100, 200],
                 "depth": [3, 5, 7],
                 "learning_rate": [0.01, 0.05, 0.1]
             },
@@ -381,7 +370,7 @@ if st.button("🚀 Avvia training"):
                 "C": [0.01, 0.1, 1, 10],
                 "solver": ["lbfgs", "liblinear"]
             },
-            "Linear Regression": {}  # niente tuning
+            "Linear Regression": {}
         }
 
         # Progress bar
@@ -393,10 +382,9 @@ if st.button("🚀 Avvia training"):
         # Loop sui modelli
         for name, model in models.items():
             completed += 1
-            status_text.text(f"⏳ Allenamento + tuning: {name} ({completed}/{total_models})...")
+            status_text.text(f"⏳ Allenamento: {name} ({completed}/{total_models})...")
 
             try:
-                # 🔧 Hyperparameter tuning (se disponibile)
                 if name in param_grids and len(param_grids[name]) > 0:
                     search = RandomizedSearchCV(
                         model,
@@ -413,7 +401,7 @@ if st.button("🚀 Avvia training"):
                 else:
                     model.fit(X_train, y_train)
 
-                # --- Predizioni
+                # Predizioni
                 y_pred_train = model.predict(X_train)
                 y_pred_test = model.predict(X_test)
 
@@ -425,8 +413,7 @@ if st.button("🚀 Avvia training"):
                         "Test F1": f1_score(y_test, y_pred_test, average="weighted"),
                     }
                     score = metrics["Test F1"]
-
-                else:  # regression
+                else:
                     metrics = {
                         "Train RMSE": np.sqrt(mean_squared_error(y_train, y_pred_train)),
                         "Test RMSE": np.sqrt(mean_squared_error(y_test, y_pred_test)),
@@ -438,23 +425,20 @@ if st.button("🚀 Avvia training"):
                     score = metrics["Test R2"]
 
                 results[name] = metrics
-                st.write(f"📊 Risultati parziali - {name}", metrics)
 
-                # Aggiorno miglior modello
                 if score is not None and (best_score is None or score > best_score):
                     best_score = score
                     best_model = model
 
             except Exception as e:
                 import traceback
-                st.error(f"❌ Errore durante training/tuning di {name}: {type(e).__name__} - {e}")
+                st.error(f"❌ Errore con {name}: {type(e).__name__} - {e}")
                 st.text(traceback.format_exc())
 
             progress_bar.progress(completed / total_models)
 
-        status_text.text("✅ Training + tuning completato!")
+        status_text.text("✅ Training completato!")
 
-        # --- Risultati finali
         if len(results) == 0:
             st.error("❌ Nessun modello è stato allenato correttamente.")
         else:
@@ -462,8 +446,6 @@ if st.button("🚀 Avvia training"):
             results_df = pd.DataFrame(results).T
             st.write("### 📊 Risultati complessivi")
             st.write(results_df)
-
-
     # --- Grafici comparativi ---
     st.subheader("📉 Confronto modelli")
     if problem_type == "classification":
@@ -550,6 +532,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
