@@ -76,11 +76,13 @@ if uploaded_file is not None:
     st.write(missing[missing > 0])
 
 
-    # --- Flag per imputazione ---
-    missing_strategy = None  # "mean", "median", "mode", "rows", "cols", "missforest"
+   # ------------------------------------------------------------
+# 🛠️ Gestione dei Missing Values
+# ------------------------------------------------------------
+missing_strategy = None  
 
-    if missing.sum() > 0:
-        st.markdown("### 🛠️ Gestione dei Missing Values")
+if missing.sum() > 0:
+    st.markdown("### 🛠️ Gestione dei Missing Values")
 
     option = st.radio(
         "Come vuoi gestire i valori mancanti?",
@@ -106,7 +108,6 @@ if uploaded_file is not None:
     elif option == "Imputazione avanzata (MissForest)":
         missing_strategy = "missforest"
         st.info("ℹ️ Verrà usato MissForest dopo lo split (solo su X, non su y).")
-
     # Scelta target
     target_column = st.selectbox("Scegli la variabile target (y)", df.columns)
 
@@ -223,29 +224,45 @@ if target_column:
     st.write(f"📊 Validation: {len(X_val)} ({len(X_val)/len(X):.1%})")
     st.write(f"📊 Test: {len(X_test)} ({len(X_test)/len(X):.1%})")
 
-    # ------------------------------------------------------------
-    # 🔧 Gestione valori mancanti
-    # ------------------------------------------------------------
-    if missing_strategy:
-        if missing_strategy == "drop":
-            X_train = pd.DataFrame(X_train).dropna()
-            X_val   = pd.DataFrame(X_val).dropna()
-            X_test  = pd.DataFrame(X_test).dropna()
-        elif missing_strategy == "mean":
+# ------------------------------------------------------------
+# 🔧 Applicazione strategia
+# ------------------------------------------------------------
+if missing_strategy:
+    if missing_strategy == "rows":
+        X_train = pd.DataFrame(X_train).dropna()
+        X_val   = pd.DataFrame(X_val).dropna()
+        X_test  = pd.DataFrame(X_test).dropna()
+
+    elif missing_strategy == "cols":
+        X_train = pd.DataFrame(X_train).dropna(axis=1)
+        X_val   = pd.DataFrame(X_val).dropna(axis=1)
+        X_test  = pd.DataFrame(X_test).dropna(axis=1)
+
+    elif missing_strategy in ["mean", "median", "mode"]:
+        if missing_strategy == "mean":
             imputer = SimpleImputer(strategy="mean")
-            X_train = imputer.fit_transform(X_train)
-            X_val   = imputer.transform(X_val)
-            X_test  = imputer.transform(X_test)
         elif missing_strategy == "median":
             imputer = SimpleImputer(strategy="median")
-            X_train = imputer.fit_transform(X_train)
-            X_val   = imputer.transform(X_val)
-            X_test  = imputer.transform(X_test)
-        elif missing_strategy == "most_frequent":
+        else:  # mode
             imputer = SimpleImputer(strategy="most_frequent")
-            X_train = imputer.fit_transform(X_train)
-            X_val   = imputer.transform(X_val)
-            X_test  = imputer.transform(X_test)
+
+        # 🔑 Manteniamo le colonne
+        X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
+        X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
+        X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
+
+    elif missing_strategy == "missforest":
+        from missingpy import MissForest
+        imputer = MissForest()
+        X_train = pd.DataFrame(imputer.fit_transform(X_train), columns=X_train.columns)
+        X_val   = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns)
+        X_test  = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
+
+    # Debug info (Streamlit)
+    st.write("✅ Missing values gestiti con strategia:", missing_strategy)
+    st.write("📊 NaN rimasti in X_train:", X_train.isna().sum().sum())
+
+    
 
     # Feature scaling
     scaler = StandardScaler()
@@ -513,6 +530,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
