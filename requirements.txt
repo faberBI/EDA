@@ -18,7 +18,6 @@ seaborn
 plotly
 
 # EDA tools
-ppscore
 statsmodels
 yellowbrick
 
@@ -33,3 +32,6 @@ openai
 
 # Utils
 joblib
+setuptools
+wheel
+ppscore
