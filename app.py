@@ -354,13 +354,17 @@ else:
 # ============================================================
 st.markdown("### ✨ Feature Selection")
 
-# Numero di features da selezionare (minimo 5, massimo numero di colonne disponibili)
+max_features = X_train.shape[1]  # numero totale di colonne disponibili
+default_k = min(20, max_features) # valore di default
+min_k = min(5, max_features)      # minimo tra 5 e il numero totale
+
 k = st.slider(
     "Numero di features da selezionare",
-    5,
-    min(X_train.shape[1], 50),  # massimo 50 o numero di colonne disponibili
-    min(20, X_train.shape[1])
+    min_value=min_k,
+    max_value=max_features,
+    value=default_k
 )
+
 
 # Selezione delle features
 selector = SelectKBest(
@@ -608,6 +612,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
