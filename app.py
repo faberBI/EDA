@@ -356,18 +356,13 @@ st.markdown("### ✨ Feature Selection")
 
 num_features = X_train.shape[1]
 
-# Impostazioni sicure per lo slider
-min_k = 1 if num_features >= 1 else 0          # minimo 1, oppure 0 se non ci sono colonne
-max_k = num_features                            # massimo = numero di colonne
-default_k = min(20, max_k)                      # default = 20 o numero massimo disponibile
-
-# Slider sicuro
 k = st.slider(
-    "Numero di features da selezionare",
-    min_value=min_k,
-    max_value=max_k,
-    value=default_k
+    label="Numero di features da selezionare",
+    min_value=1,
+    max_value=num_features,
+    value=min(20, num_features)
 )
+
 
 # Selezione delle features
 selector = SelectKBest(
@@ -615,6 +610,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
