@@ -354,6 +354,14 @@ else:
 # ============================================================
 st.markdown("### ✨ Feature Selection")
 
+# Reset degli indici e conversione a float
+X_train = X_train.reset_index(drop=True).astype(float)
+X_val   = X_val.reset_index(drop=True).astype(float)
+X_test  = X_test.reset_index(drop=True).astype(float)
+y_train = pd.Series(y_train).reset_index(drop=True)
+y_val   = pd.Series(y_val).reset_index(drop=True)
+y_test  = pd.Series(y_test).reset_index(drop=True)
+
 # Seleziona il numero massimo di features disponibili
 num_features = X_train.shape[1]
 
@@ -623,6 +631,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
