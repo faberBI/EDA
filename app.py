@@ -604,17 +604,16 @@ if st.button("🚀 Avvia training"):
         plt.title("R² - Train vs Test")
         plt.xticks(rotation=45)
         st.pyplot(fig)
-    
-    # --- Scatter Plot y_true vs y_pred (solo test) ---
-    st.subheader("📌 Scatter Plot Predizioni vs Valori Reali (Test)")
-    y_pred_test = best_model.predict(X_test)
-    fig, ax = plt.subplots(figsize=(6,6))
-    ax.scatter(y_test, y_pred_test, alpha=0.6)
-    ax.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'r--')
-    ax.set_xlabel("Valore Reale")
-    ax.set_ylabel("Predizione")
-    ax.set_title(f"Scatter Predizioni vs Valori Reali ({best_model.__class__.__name__})")
-    st.pyplot(fig)
+        # --- Scatter Plot y_true vs y_pred (solo test) ---
+        st.subheader("📌 Scatter Plot Predizioni vs Valori Reali (Test)")
+        y_pred_test = best_model.predict(X_test)
+        fig, ax = plt.subplots(figsize=(6,6))
+        ax.scatter(y_test, y_pred_test, alpha=0.6)
+        ax.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'r--')
+        ax.set_xlabel("Valore Reale")
+        ax.set_ylabel("Predizione")
+        ax.set_title(f"Scatter Predizioni vs Valori Reali ({best_model.__class__.__name__})")
+        st.pyplot(fig)
     
     client = OpenAI(api_key=api_key)
 
@@ -655,6 +654,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
