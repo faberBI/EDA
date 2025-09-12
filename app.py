@@ -617,18 +617,21 @@ if st.button("🚀 Avvia training"):
     
     if problem_type == "classification" and best_model is not None:
         st.markdown("### 🧪 Calibrazione modello")
-
+    
         # Menu a tendina per metodo di calibrazione
         calibration_method = st.selectbox(
             "Seleziona il metodo di calibrazione",
             ["Isotonic", "Sigmoid", "Venn-Abers"]
         )
-
+    
         # Pulsante per avviare la calibrazione
         if st.button("Calibra modello") or "calibrated_metrics" in st.session_state:
             try:
-                # Se il modello non è già stato calibrato, calibralo
-                if "calibrated_model" not in st.session_state or st.session_state.calibration_method != calibration_method:
+                # Se non esiste o il metodo è cambiato, ricalibra
+                if (
+                    "calibrated_model" not in st.session_state or
+                    st.session_state.calibration_method != calibration_method
+                ):
                     if calibration_method in ["Isotonic", "Sigmoid"]:
                         calibrated_model = CalibratedClassifierCV(
                             best_model, method=calibration_method.lower(), cv=3
@@ -638,25 +641,27 @@ if st.button("🚀 Avvia training"):
                         from venn_abers import VennAbersClassifier
                         calibrated_model = VennAbersClassifier(best_model)
                         calibrated_model.fit(X_train, y_train)
-
+    
+                    # Salva modello e metodo in session_state
                     st.session_state.calibrated_model = calibrated_model
                     st.session_state.calibration_method = calibration_method
-
+    
                     # Predizioni e probabilità
                     y_pred = calibrated_model.predict(X_test)
                     y_prob = (
                         calibrated_model.predict_proba(X_test)
                         if hasattr(calibrated_model, "predict_proba") else None
                     )
-
-                    # Metriche
+    
+                    # Calcola metriche
                     metrics_dict = {
                         "Accuracy": accuracy_score(y_test, y_pred),
                         "F1": f1_score(y_test, y_pred, average="weighted"),
                         "Precision": precision_score(y_test, y_pred, average="weighted"),
                         "Recall": recall_score(y_test, y_pred, average="weighted")
                     }
-
+    
+                    # Calcolo ECE se disponibili probabilità
                     if y_prob is not None:
                         ece_list = []
                         for i in range(y_prob.shape[1]):
@@ -667,16 +672,17 @@ if st.button("🚀 Avvia training"):
                             )
                             ece_list.append(np.abs(prob_true - prob_pred).mean())
                         metrics_dict["ECE (mean per class)"] = np.mean(ece_list)
-
+    
                     st.session_state.calibrated_metrics = metrics_dict
-
-                # Mostra le metriche
+    
+                # Mostra sempre le metriche salvate
                 metrics_df = pd.DataFrame([st.session_state.calibrated_metrics])
                 st.write("### 📊 Metriche modello calibrato")
                 st.dataframe(metrics_df)
-
+    
             except Exception as e:
                 st.error(f"❌ Errore nella calibrazione: {type(e).__name__} - {e}")
+
 
 
     
@@ -719,6 +725,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
