@@ -348,6 +348,33 @@ if target_column:
 else:
     st.warning("⚠️ Devi prima selezionare una colonna target nella sezione sopra.")
 
+
+# ============================================================
+# ✨ Feature Selection
+# ============================================================
+st.markdown("### ✨ Feature Selection")
+
+# Numero di features da selezionare (minimo 5, massimo numero di colonne disponibili)
+k = st.slider(
+    "Numero di features da selezionare",
+    5,
+    min(X_train.shape[1], 50),  # massimo 50 o numero di colonne disponibili
+    min(20, X_train.shape[1])
+)
+
+# Selezione delle features
+selector = SelectKBest(
+    score_func=f_classif if problem_type == "classification" else f_regression,
+    k=k
+)
+
+# Fit sul train set e trasformazione train, validation e test
+X_train = selector.fit_transform(X_train, y_train)
+X_val   = selector.transform(X_val)
+X_test  = selector.transform(X_test)
+
+st.success(f"✅ Selezionate le prime {k} feature più rilevanti")
+
 # ------------------------------------------------------------
 # 🔘 Scelta modelli
 # ------------------------------------------------------------
@@ -581,6 +608,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
