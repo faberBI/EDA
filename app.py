@@ -256,76 +256,82 @@ if target_column:
     # ------------------------------------------------------------
     # 🔧 Preprocessing completo (missing, scaling, encoding)
     # ------------------------------------------------------------
-    if missing_strategy:
-        numeric_cols = X_train.select_dtypes(include=["int64", "float64"]).columns.tolist()
-        categorical_cols = X_train.select_dtypes(include=["object", "category", "string"]).columns.tolist()
-        if missing_strategy == "rows":
-            X_train = pd.DataFrame(X_train).dropna()
-            X_val   = pd.DataFrame(X_val).dropna()
-            X_test  = pd.DataFrame(X_test).dropna()
+    # ------------------------------------------------------------
+# 🔧 Preprocessing completo (missing, scaling, encoding)
+# ------------------------------------------------------------
+if missing_strategy:
+    # Identifica colonne numeriche e categoriche
+    numeric_cols = X_train.select_dtypes(include=["int64", "float64"]).columns.tolist()
+    categorical_cols = X_train.select_dtypes(include=["object", "category", "string"]).columns.tolist()
 
-        elif missing_strategy == "cols":
-            X_train = pd.DataFrame(X_train).dropna(axis=1)
-            X_val   = pd.DataFrame(X_val).dropna(axis=1)
-            X_test  = pd.DataFrame(X_test).dropna(axis=1)
+    # --- Gestione missing ---
+    if missing_strategy == "rows":
+        X_train = X_train.dropna()
+        X_val   = X_val.dropna()
+        X_test  = X_test.dropna()
 
-        elif missing_strategy in ["mean", "median", "mode"]:
-            if missing_strategy == "mean":
-                num_imputer = SimpleImputer(strategy="mean")
-            elif missing_strategy == "median":
-                num_imputer = SimpleImputer(strategy="median")
-            else:
-                num_imputer = SimpleImputer(strategy="most_frequent")
+    elif missing_strategy == "cols":
+        X_train = X_train.dropna(axis=1)
+        X_val   = X_val.dropna(axis=1)
+        X_test  = X_test.dropna(axis=1)
 
-            X_train[numeric_cols] = num_imputer.fit_transform(X_train[numeric_cols])
-            X_val[numeric_cols]   = num_imputer.transform(X_val[numeric_cols])
-            X_test[numeric_cols]  = num_imputer.transform(X_test[numeric_cols])
+    elif missing_strategy in ["mean", "median", "mode"]:
+        if missing_strategy == "mean":
+            num_imputer = SimpleImputer(strategy="mean")
+        elif missing_strategy == "median":
+            num_imputer = SimpleImputer(strategy="median")
+        else:
+            num_imputer = SimpleImputer(strategy="most_frequent")
 
-            cat_imputer = SimpleImputer(strategy="most_frequent")
-            X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
-            X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
-            X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
+        X_train[numeric_cols] = num_imputer.fit_transform(X_train[numeric_cols])
+        X_val[numeric_cols]   = num_imputer.transform(X_val[numeric_cols])
+        X_test[numeric_cols]  = num_imputer.transform(X_test[numeric_cols])
 
-        elif missing_strategy == "iterative":
-            imputer = IterativeImputer(random_state=42)
-            X_train[numeric_cols] = imputer.fit_transform(X_train[numeric_cols])
-            X_val[numeric_cols]   = imputer.transform(X_val[numeric_cols])
-            X_test[numeric_cols]  = imputer.transform(X_test[numeric_cols])
+        # Categorical
+        cat_imputer = SimpleImputer(strategy="most_frequent")
+        X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
+        X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
+        X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
 
-            cat_imputer = SimpleImputer(strategy="most_frequent")
-            X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
-            X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
-            X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
+    elif missing_strategy == "iterative":
+        imputer = IterativeImputer(random_state=42)
+        X_train[numeric_cols] = imputer.fit_transform(X_train[numeric_cols])
+        X_val[numeric_cols]   = imputer.transform(X_val[numeric_cols])
+        X_test[numeric_cols]  = imputer.transform(X_test[numeric_cols])
 
-        st.success(f"✅ Missing values gestiti con strategia: **{missing_strategy}**")
+        cat_imputer = SimpleImputer(strategy="most_frequent")
+        X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
+        X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
+        X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
 
-        # Scaling numeriche
-        if len(numeric_cols) > 0:
-            scaler = StandardScaler()
-            X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
-            X_val[numeric_cols]   = scaler.transform(X_val[numeric_cols])
-            X_test[numeric_cols]  = scaler.transform(X_test[numeric_cols])
+st.success(f"✅ Missing values gestiti con strategia: **{missing_strategy}**")
 
-        # One-hot encoding
-        if len(categorical_cols) > 0:
-            encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
-            train_encoded = encoder.fit_transform(X_train[categorical_cols])
-            val_encoded   = encoder.transform(X_val[categorical_cols])
-            test_encoded  = encoder.transform(X_test[categorical_cols])
+    # --- Scaling numeriche ---
+    if len(numeric_cols) > 0:
+        scaler = StandardScaler()
+        X_train[numeric_cols] = scaler.fit_transform(X_train[numeric_cols])
+        X_val[numeric_cols]   = scaler.transform(X_val[numeric_cols])
+        X_test[numeric_cols]  = scaler.transform(X_test[numeric_cols])
 
-            encoded_cols = encoder.get_feature_names_out(categorical_cols)
-            train_encoded = pd.DataFrame(train_encoded, columns=encoded_cols, index=X_train.index)
-            val_encoded   = pd.DataFrame(val_encoded, columns=encoded_cols, index=X_val.index)
-            test_encoded  = pd.DataFrame(test_encoded, columns=encoded_cols, index=X_test.index)
+    # --- One-hot encoding sempre su tutte le categoriche ---
+    if len(categorical_cols) > 0:
+        encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+        train_encoded = encoder.fit_transform(X_train[categorical_cols])
+        val_encoded   = encoder.transform(X_val[categorical_cols])
+        test_encoded  = encoder.transform(X_test[categorical_cols])
 
-            X_train = pd.concat([X_train.drop(columns=categorical_cols), train_encoded], axis=1)
-            X_val   = pd.concat([X_val.drop(columns=categorical_cols), val_encoded], axis=1)
-            X_test  = pd.concat([X_test.drop(columns=categorical_cols), test_encoded], axis=1)
+        encoded_cols = encoder.get_feature_names_out(categorical_cols)
+        train_encoded = pd.DataFrame(train_encoded, columns=encoded_cols, index=X_train.index)
+        val_encoded   = pd.DataFrame(val_encoded, columns=encoded_cols, index=X_val.index)
+        test_encoded  = pd.DataFrame(test_encoded, columns=encoded_cols, index=X_test.index)
+
+        # Unisci numeriche + OneHotEncoded
+        X_train = pd.concat([X_train.drop(columns=categorical_cols), train_encoded], axis=1)
+        X_val   = pd.concat([X_val.drop(columns=categorical_cols), val_encoded], axis=1)
+        X_test  = pd.concat([X_test.drop(columns=categorical_cols), test_encoded], axis=1)
         
-        # 🔧 Forza tutte le feature a numeriche (anti-errori per XGBoost & co.)
-        for df_tmp in [X_train, X_val, X_test]:
-            for col in df_tmp.select_dtypes(include=["object", "string"]).columns:
-                df_tmp[col] = df_tmp[col].astype("category").cat.codes
+    st.success("✅ Tutte le variabili categoriche convertite con OneHotEncoding. Tutti i dati sono numerici!")
+
 
         st.success("✅ Dati preprocessati e convertiti in numerici!")
         # Pulizia y
