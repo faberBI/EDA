@@ -11,7 +11,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression
-from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, mean_squared_error, r2_score, mean_absolute_error
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, mean_squared_error, r2_score, mean_absolute_error, confusion_matrix, classification_report
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from xgboost import XGBClassifier, XGBRegressor
@@ -25,7 +25,7 @@ from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.compose import ColumnTransformer
-
+from sklearn.calibration import calibration_curve
 
 # GPT libreria
 from openai import OpenAI
@@ -531,42 +531,80 @@ if st.button("🚀 Avvia training"):
             results_df = pd.DataFrame(results).T
             st.write("### 📊 Risultati complessivi")
             st.write(results_df)
-    # --- Grafici comparativi ---
+            
+    # --- Grafici comparativi e metriche ---
     st.subheader("📉 Confronto modelli")
+
     if problem_type == "classification":
+        # --- Metriche Train/Test ---
         fig, ax = plt.subplots(figsize=(8,5))
         results_df[["Train Accuracy","Test Accuracy","Train F1","Test F1"]].plot(kind="bar", ax=ax)
         plt.title("Accuracy & F1 - Train vs Test")
         plt.xticks(rotation=45)
         st.pyplot(fig)
-
+    
+        # Brier Score
         if "Brier Score" in results_df.columns:
             fig, ax = plt.subplots(figsize=(8,5))
             results_df["Brier Score"].dropna().plot(kind="bar", ax=ax, color="orange")
             plt.title("Brier Score")
             plt.xticks(rotation=45)
             st.pyplot(fig)
-
+    
+        # ECE generale se presente
         if "ECE" in results_df.columns:
             fig, ax = plt.subplots(figsize=(8,5))
             results_df["ECE"].dropna().plot(kind="bar", ax=ax, color="purple")
             plt.title("Expected Calibration Error (ECE)")
             plt.xticks(rotation=45)
             st.pyplot(fig)
-
+    
+        # --- Confusion Matrix ---
+        y_pred_test = best_model.predict(X_test)
+        cm = confusion_matrix(y_test, y_pred_test)
+        fig, ax = plt.subplots(figsize=(6,5))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Actual")
+        ax.set_title(f"Confusion Matrix - {best_model.__class__.__name__}")
+        st.pyplot(fig)
+    
+        # --- Classification Report ---
+        report = classification_report(y_test, y_pred_test, output_dict=True)
+        report_df = pd.DataFrame(report).transpose()
+        st.write("### Classification Report")
+        st.dataframe(report_df)
+    
+        # --- Expected Calibration Error (ECE) per classe ---
+        if hasattr(best_model, "predict_proba"):
+            prob_pos = best_model.predict_proba(X_test)
+            ece_list = []
+            for i in range(prob_pos.shape[1]):
+                prob_true, prob_pred = calibration_curve(
+                    (y_test == i).astype(int),
+                    prob_pos[:, i],
+                    n_bins=10
+                )
+                ece = np.abs(prob_true - prob_pred).mean()
+                ece_list.append(ece)
+            ece_df = pd.DataFrame({"Classe": range(prob_pos.shape[1]), "ECE": ece_list})
+            st.write("### Expected Calibration Error (ECE) per classe")
+            st.dataframe(ece_df)
+    
     else:
+        # --- Regressione: Errori e R² ---
         fig, ax = plt.subplots(figsize=(8,5))
         results_df[["Train RMSE","Test RMSE","Train MAE","Test MAE"]].plot(kind="bar", ax=ax)
         plt.title("Errori - Train vs Test")
         plt.xticks(rotation=45)
         st.pyplot(fig)
-
+    
         fig, ax = plt.subplots(figsize=(8,5))
         results_df[["Train R2","Test R2"]].plot(kind="bar", ax=ax, color=["green","blue"])
         plt.title("R² - Train vs Test")
         plt.xticks(rotation=45)
         st.pyplot(fig)
-
+    
     # --- Scatter Plot y_true vs y_pred (solo test) ---
     st.subheader("📌 Scatter Plot Predizioni vs Valori Reali (Test)")
     y_pred_test = best_model.predict(X_test)
@@ -575,7 +613,7 @@ if st.button("🚀 Avvia training"):
     ax.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'r--')
     ax.set_xlabel("Valore Reale")
     ax.set_ylabel("Predizione")
-    ax.set_title("Scatter Predizioni vs Valori Reali (Miglior modello)")
+    ax.set_title(f"Scatter Predizioni vs Valori Reali ({best_model.__class__.__name__})")
     st.pyplot(fig)
     
     client = OpenAI(api_key=api_key)
@@ -617,6 +655,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
