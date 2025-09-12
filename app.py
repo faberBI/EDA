@@ -614,62 +614,65 @@ if st.button("🚀 Avvia training"):
         ax.set_ylabel("Predizione")
         ax.set_title(f"Scatter Predizioni vs Valori Reali ({best_model.__class__.__name__})")
         st.pyplot(fig)
-
+    
     if problem_type == "classification" and best_model is not None:
-    st.markdown("### 🧪 Calibrazione modello")
-
-    # Menu a tendina per metodo di calibrazione
-    calibration_method = st.selectbox(
-        "Seleziona il metodo di calibrazione",
-        ["Isotonic", "Sigmoid", "Venn-Abers"]
-    )
-
-    # Pulsante per avviare la calibrazione
-    if st.button("Calibra modello"):
-        try:
-            if calibration_method in ["Isotonic", "Sigmoid"]:
-                calibrated_model = CalibratedClassifierCV(best_model, method=calibration_method.lower(), cv=3)
-                calibrated_model.fit(X_train, y_train)
-            else:
-                from venn_abers import VennAbersClassifier
-                calibrated_model = VennAbersClassifier(best_model)
-                calibrated_model.fit(X_train, y_train)
-
-            # Predizioni e probabilità
-            y_pred = calibrated_model.predict(X_test)
-            if hasattr(calibrated_model, "predict_proba"):
-                y_prob = calibrated_model.predict_proba(X_test)
-            else:
-                y_prob = None
-
-            # Metriche standard
-            metrics_dict = {
-                "Accuracy": accuracy_score(y_test, y_pred),
-                "F1": f1_score(y_test, y_pred, average="weighted"),
-                "Precision": precision_score(y_test, y_pred, average="weighted"),
-                "Recall": recall_score(y_test, y_pred, average="weighted")
-            }
-
-            # Calcolo ECE se ci sono probabilità
-            if y_prob is not None:
-                ece_list = []
-                for i in range(y_prob.shape[1]):
-                    prob_true, prob_pred = calibration_curve(
-                        (y_test == i).astype(int),
-                        y_prob[:, i],
-                        n_bins=10
+        st.markdown("### 🧪 Calibrazione modello")
+    
+        # Menu a tendina per metodo di calibrazione
+        calibration_method = st.selectbox(
+            "Seleziona il metodo di calibrazione",
+            ["Isotonic", "Sigmoid", "Venn-Abers"]
+        )
+    
+        # Pulsante per avviare la calibrazione
+        if st.button("Calibra modello"):
+            try:
+                # Calibrazione standard o Venn-Abers
+                if calibration_method in ["Isotonic", "Sigmoid"]:
+                    calibrated_model = CalibratedClassifierCV(
+                        best_model, method=calibration_method.lower(), cv=3
                     )
-                    ece_list.append(np.abs(prob_true - prob_pred).mean())
-                metrics_dict["ECE (mean per class)"] = np.mean(ece_list)
-
-            # Mostra le metriche in tabella
-            metrics_df = pd.DataFrame([metrics_dict])
-            st.write("### 📊 Metriche modello calibrato")
-            st.dataframe(metrics_df)
-
-        except Exception as e:
-            st.error(f"❌ Errore nella calibrazione: {type(e).__name__} - {e}")
-
+                    calibrated_model.fit(X_train, y_train)
+                else:
+                    from venn_abers import VennAbersClassifier
+                    calibrated_model = VennAbersClassifier(best_model)
+                    calibrated_model.fit(X_train, y_train)
+    
+                # Predizioni e probabilità
+                y_pred = calibrated_model.predict(X_test)
+                if hasattr(calibrated_model, "predict_proba"):
+                    y_prob = calibrated_model.predict_proba(X_test)
+                else:
+                    y_prob = None
+    
+                # Metriche standard
+                metrics_dict = {
+                    "Accuracy": accuracy_score(y_test, y_pred),
+                    "F1": f1_score(y_test, y_pred, average="weighted"),
+                    "Precision": precision_score(y_test, y_pred, average="weighted"),
+                    "Recall": recall_score(y_test, y_pred, average="weighted")
+                }
+    
+                # Calcolo ECE se ci sono probabilità
+                if y_prob is not None:
+                    ece_list = []
+                    for i in range(y_prob.shape[1]):
+                        prob_true, prob_pred = calibration_curve(
+                            (y_test == i).astype(int),
+                            y_prob[:, i],
+                            n_bins=10
+                        )
+                        ece_list.append(np.abs(prob_true - prob_pred).mean())
+                    metrics_dict["ECE (mean per class)"] = np.mean(ece_list)
+    
+                # Mostra le metriche in tabella
+                metrics_df = pd.DataFrame([metrics_dict])
+                st.write("### 📊 Metriche modello calibrato")
+                st.dataframe(metrics_df)
+    
+            except Exception as e:
+                st.error(f"❌ Errore nella calibrazione: {type(e).__name__} - {e}")
+    
     client = OpenAI(api_key=api_key)
 
     # Creiamo un dataframe riassuntivo dei risultati
@@ -709,6 +712,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
