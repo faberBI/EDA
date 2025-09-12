@@ -531,12 +531,20 @@ if st.button("🚀 Avvia training"):
             results_df = pd.DataFrame(results).T
             st.write("### 📊 Risultati complessivi")
             st.write(results_df)
-            
+           # Dopo aver scelto il best_model e aver completato il training
+            st.session_state.best_model = best_model
+            st.session_state.X_train = X_train
+            st.session_state.y_train = y_train
+            st.session_state.X_test = X_test
+            st.session_state.y_test = y_test
+            st.session_state.results_df = results_df
+
+    
     # --- Grafici comparativi e metriche ---
     st.subheader("📉 Confronto modelli")
 
     if problem_type == "classification":
-        # --- Metriche Train/Test ---
+                # --- Metriche Train/Test ---
         fig, ax = plt.subplots(figsize=(8,5))
         results_df[["Train Accuracy","Test Accuracy","Train F1","Test F1"]].plot(kind="bar", ax=ax)
         plt.title("Accuracy & F1 - Train vs Test")
@@ -615,9 +623,32 @@ if st.button("🚀 Avvia training"):
         ax.set_title(f"Scatter Predizioni vs Valori Reali ({best_model.__class__.__name__})")
         st.pyplot(fig)
     
-    if problem_type == "classification" and best_model is not None:
-        st.markdown("### 🧪 Calibrazione modello")
     
+    if problem_type == "classification" and best_model is not None:
+        
+        # Richiamare i modelli e i dati utilizzati nel training del modello
+        best_model = st.session_state.best_model
+        X_train = st.session_state.X_train
+        y_train = st.session_state.y_train
+        X_test = st.session_state.X_test
+        y_test = st.session_state.y_test
+    
+        # ⚡ Suddividi train in train principale + calibration set
+        X_train_main, X_cal, y_train_main, y_cal = train_test_split(
+            X_train, y_train,
+            test_size=0.2,
+            random_state=42,
+            stratify=y_train if problem_type=="classification" else None
+        )
+    
+        # Salva in session_state
+        st.session_state.X_train_main = X_train_main
+        st.session_state.y_train_main = y_train_main
+        st.session_state.X_cal = X_cal
+        st.session_state.y_cal = y_cal
+    
+        st.markdown("### 🧪 Calibrazione modello")
+        
         # Menu a tendina per metodo di calibrazione
         calibration_method = st.selectbox(
             "Seleziona il metodo di calibrazione",
@@ -627,26 +658,30 @@ if st.button("🚀 Avvia training"):
         # Pulsante per avviare la calibrazione
         if st.button("Calibra modello") or "calibrated_metrics" in st.session_state:
             try:
-                # Se non esiste o il metodo è cambiato, ricalibra
-                if (
-                    "calibrated_model" not in st.session_state or
-                    st.session_state.calibration_method != calibration_method
-                ):
+                # Richiama dati e best model
+                X_cal = st.session_state.X_cal
+                y_cal = st.session_state.y_cal
+    
+                # Se il modello non è ancora calibrato o il metodo è cambiato, ricalibra
+                if ("calibrated_model" not in st.session_state or 
+                    st.session_state.calibration_method != calibration_method):
+    
                     if calibration_method in ["Isotonic", "Sigmoid"]:
                         calibrated_model = CalibratedClassifierCV(
-                            best_model, method=calibration_method.lower(), cv=3
+                            best_model, method=calibration_method.lower(), cv="prefit"
                         )
-                        calibrated_model.fit(X_train, y_train)
+                        # Usa il calibration set per la calibrazione
+                        calibrated_model.fit(X_cal, y_cal)
                     else:
                         from venn_abers import VennAbersClassifier
                         calibrated_model = VennAbersClassifier(best_model)
-                        calibrated_model.fit(X_train, y_train)
+                        calibrated_model.fit(X_cal, y_cal)
     
                     # Salva modello e metodo in session_state
                     st.session_state.calibrated_model = calibrated_model
                     st.session_state.calibration_method = calibration_method
     
-                    # Predizioni e probabilità
+                    # Predizioni e probabilità sul test set
                     y_pred = calibrated_model.predict(X_test)
                     y_prob = (
                         calibrated_model.predict_proba(X_test)
@@ -683,9 +718,6 @@ if st.button("🚀 Avvia training"):
             except Exception as e:
                 st.error(f"❌ Errore nella calibrazione: {type(e).__name__} - {e}")
 
-
-
-    
     client = OpenAI(api_key=api_key)
 
     # Creiamo un dataframe riassuntivo dei risultati
@@ -725,6 +757,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
