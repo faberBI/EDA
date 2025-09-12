@@ -333,22 +333,6 @@ if target_column:
     y_test  = pd.Series(y_test).dropna().replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
     st.success("✅ Target pulito da NaN e infiniti")
 
-    # --- Feature selection ---
-    st.markdown("### ✨ Feature Selection")
-    k = st.slider("Numero di features da selezionare", 
-                  5, min(X.shape[1], X_train.shape[1]), 
-                  min(20, X_train.shape[1]))
-    selector = SelectKBest(score_func=f_classif if problem_type=="classification" else f_regression, k=k)
-    X_train = selector.fit_transform(X_train, y_train)
-    X_val   = selector.transform(X_val)
-    X_test  = selector.transform(X_test)
-
-    training_ready = True
-
-else:
-    st.warning("⚠️ Devi prima selezionare una colonna target nella sezione sopra.")
-
-
 # ============================================================
 # ✨ Feature Selection
 # ============================================================
@@ -633,6 +617,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
