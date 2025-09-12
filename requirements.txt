@@ -8,6 +8,7 @@ scipy
 xgboost
 lightgbm
 catboost
+venn-abers>=0.1.3
 
 # Visualizzazione
 matplotlib
@@ -33,5 +34,6 @@ setuptools
 wheel
 ppscore
 openpyxl
+
 
 
