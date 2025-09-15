@@ -525,33 +525,51 @@ if st.button("🚀 Avvia training"):
             st.write("### 📊 Risultati complessivi")
             st.dataframe(results_df)
    
-    # --- Grafici comparativi e metriche ---
-    st.subheader("📉 Confronto modelli")
-    results_df = st.session_state.get("results_df", None)
+    # ============================================================
+# 📉 Confronto modelli e metriche
+# ============================================================
+st.subheader("📉 Confronto modelli")
+
+# Recupera risultati e modello migliore dallo session_state
+results_df = st.session_state.get("results_df", None)
+best_model = st.session_state.get("best_model", None)
+X_train = st.session_state.get("X_train", None)
+y_train = st.session_state.get("y_train", None)
+X_test = st.session_state.get("X_test", None)
+y_test = st.session_state.get("y_test", None)
+
+if results_df is None or best_model is None:
+    st.info("⚠️ Nessun risultato disponibile. Esegui prima il training.")
+else:
+    # --- Summary tabellare ---
+    summary_df = results_df.reset_index().rename(columns={"index": "Model"})
+    st.write("### 📊 Risultati complessivi")
+    st.dataframe(summary_df)
+
     if problem_type == "classification":
-                # --- Metriche Train/Test ---
+        # --- Metriche Train/Test ---
         fig, ax = plt.subplots(figsize=(8,5))
         results_df[["Train Accuracy","Test Accuracy","Train F1","Test F1"]].plot(kind="bar", ax=ax)
         plt.title("Accuracy & F1 - Train vs Test")
         plt.xticks(rotation=45)
         st.pyplot(fig)
-    
-        # Brier Score
+
+        # --- Brier Score se presente ---
         if "Brier Score" in results_df.columns:
             fig, ax = plt.subplots(figsize=(8,5))
             results_df["Brier Score"].dropna().plot(kind="bar", ax=ax, color="orange")
             plt.title("Brier Score")
             plt.xticks(rotation=45)
             st.pyplot(fig)
-    
-        # ECE generale se presente
+
+        # --- ECE generale se presente ---
         if "ECE" in results_df.columns:
             fig, ax = plt.subplots(figsize=(8,5))
             results_df["ECE"].dropna().plot(kind="bar", ax=ax, color="purple")
             plt.title("Expected Calibration Error (ECE)")
             plt.xticks(rotation=45)
             st.pyplot(fig)
-    
+
         # --- Confusion Matrix ---
         y_pred_test = best_model.predict(X_test)
         cm = confusion_matrix(y_test, y_pred_test)
@@ -561,14 +579,14 @@ if st.button("🚀 Avvia training"):
         ax.set_ylabel("Actual")
         ax.set_title(f"Confusion Matrix - {best_model.__class__.__name__}")
         st.pyplot(fig)
-    
+
         # --- Classification Report ---
         report = classification_report(y_test, y_pred_test, output_dict=True)
         report_df = pd.DataFrame(report).transpose()
         st.write("### Classification Report")
         st.dataframe(report_df)
-    
-        # --- Expected Calibration Error (ECE) per classe ---
+
+        # --- ECE per classe se predict_proba disponibile ---
         if hasattr(best_model, "predict_proba"):
             prob_pos = best_model.predict_proba(X_test)
             ece_list = []
@@ -578,12 +596,11 @@ if st.button("🚀 Avvia training"):
                     prob_pos[:, i],
                     n_bins=10
                 )
-                ece = np.abs(prob_true - prob_pred).mean()
-                ece_list.append(ece)
+                ece_list.append(np.abs(prob_true - prob_pred).mean())
             ece_df = pd.DataFrame({"Classe": range(prob_pos.shape[1]), "ECE": ece_list})
             st.write("### Expected Calibration Error (ECE) per classe")
             st.dataframe(ece_df)
-    
+
     else:
         # --- Regressione: Errori e R² ---
         fig, ax = plt.subplots(figsize=(8,5))
@@ -591,13 +608,14 @@ if st.button("🚀 Avvia training"):
         plt.title("Errori - Train vs Test")
         plt.xticks(rotation=45)
         st.pyplot(fig)
-    
+
         fig, ax = plt.subplots(figsize=(8,5))
         results_df[["Train R2","Test R2"]].plot(kind="bar", ax=ax, color=["green","blue"])
         plt.title("R² - Train vs Test")
         plt.xticks(rotation=45)
         st.pyplot(fig)
-        # --- Scatter Plot y_true vs y_pred (solo test) ---
+
+        # --- Scatter Plot y_true vs y_pred ---
         st.subheader("📌 Scatter Plot Predizioni vs Valori Reali (Test)")
         y_pred_test = best_model.predict(X_test)
         fig, ax = plt.subplots(figsize=(6,6))
@@ -607,46 +625,14 @@ if st.button("🚀 Avvia training"):
         ax.set_ylabel("Predizione")
         ax.set_title(f"Scatter Predizioni vs Valori Reali ({best_model.__class__.__name__})")
         st.pyplot(fig)
-    
-    
-    if problem_type == "classification" and best_model is not None:
-        
-        # Richiamare i modelli e i dati utilizzati nel training del modello
-        best_model = st.session_state.best_model
-        X_train = st.session_state.X_train
-        y_train = st.session_state.y_train
-        X_test = st.session_state.X_test
-        y_test = st.session_state.y_test
-    
-        # ⚡ Suddividi train in train principale + calibration set
-        X_train_main, X_cal, y_train_main, y_cal = train_test_split(
-            X_train, y_train,
-            test_size=0.2,
-            random_state=42,
-            stratify=y_train if problem_type=="classification" else None
-        )
-    
-        # Salva in session_state
-        st.session_state.X_train_main = X_train_main
-        st.session_state.y_train_main = y_train_main
-        st.session_state.X_cal = X_cal
-        st.session_state.y_cal = y_cal
 
-        st.session_state.training_done = True   # 👈 flag di stato
-
-    # ============================================================
-# 🧪 Calibrazione modello (fuori dal training)
+# ============================================================
+# 🧪 Calibrazione modello (solo classification)
 # ============================================================
 if st.session_state.get("training_done", False) and problem_type == "classification":
     st.markdown("### 🧪 Calibrazione modello")
 
-    best_model = st.session_state.best_model
-    X_train = st.session_state.X_train
-    y_train = st.session_state.y_train
-    X_test = st.session_state.X_test
-    y_test = st.session_state.y_test
-
-    # ⚡ split per calibrazione
+    # ⚡ split per calibrazione se non già fatto
     if "X_cal" not in st.session_state:
         X_train_main, X_cal, y_train_main, y_cal = train_test_split(
             X_train, y_train,
@@ -659,7 +645,6 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
         st.session_state.X_cal = X_cal
         st.session_state.y_cal = y_cal
 
-    # Menu metodo
     calibration_method = st.selectbox(
         "Seleziona il metodo di calibrazione",
         ["Isotonic", "Sigmoid", "Venn-Abers"]
@@ -683,7 +668,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
             st.session_state.calibrated_model = calibrated_model
             st.session_state.calibration_method = calibration_method
 
-            # Metriche
+            # --- Metriche modello calibrato ---
             y_pred = calibrated_model.predict(X_test)
             y_prob = (
                 calibrated_model.predict_proba(X_test)
@@ -714,7 +699,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
         except Exception as e:
             st.error(f"❌ Errore nella calibrazione: {type(e).__name__} - {e}")
 
-    # Mostra sempre metriche salvate
+    # Mostra metriche calibrate se presenti
     if "calibrated_metrics" in st.session_state:
         metrics_df = pd.DataFrame([st.session_state.calibrated_metrics])
         st.write("### 📊 Metriche modello calibrato")
@@ -759,6 +744,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
