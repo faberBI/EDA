@@ -441,33 +441,7 @@ if st.button("🚀 Avvia training"):
         st.write(f"y_train shape: {y_train.shape}")
 
         # --- Hyperparameter grids ---
-        param_grids = {
-            "Random Forest": {
-                "n_estimators": [50, 100, 200],
-                "max_depth": [3, 5, 7],
-                "min_samples_split": [2, 5, 10]
-            },
-            "XGBoost": {
-                "n_estimators": [50, 100, 200],
-                "max_depth": [3, 5, 7],
-                "learning_rate": [0.01, 0.05, 0.1]
-            },
-            "LightGBM": {
-                "n_estimators": [50, 100, 200],
-                "num_leaves": [31, 50, 100],
-                "learning_rate": [0.01, 0.05, 0.1]
-            },
-            "CatBoost": {
-                "iterations": [50, 100, 200],
-                "depth": [3, 5, 7],
-                "learning_rate": [0.01, 0.05, 0.1]
-            },
-            "Logistic Regression": {
-                "C": [0.01, 0.1, 1, 10],
-                "solver": ["lbfgs", "liblinear"]
-            },
-            "Linear Regression": {}
-        }
+        param_grids = { ... }  # mantieni quello che hai già
 
         # Progress bar
         progress_bar = st.progress(0)
@@ -479,7 +453,6 @@ if st.button("🚀 Avvia training"):
         for name, model in models.items():
             completed += 1
             status_text.text(f"⏳ Allenamento: {name} ({completed}/{total_models})...")
-
             try:
                 if name in param_grids and len(param_grids[name]) > 0:
                     search = RandomizedSearchCV(
@@ -497,7 +470,7 @@ if st.button("🚀 Avvia training"):
                 else:
                     model.fit(X_train, y_train)
 
-                # Predizioni
+                # Predizioni e metriche
                 y_pred_train = model.predict(X_train)
                 y_pred_test = model.predict(X_test)
 
@@ -538,20 +511,20 @@ if st.button("🚀 Avvia training"):
         if len(results) == 0:
             st.error("❌ Nessun modello è stato allenato correttamente.")
         else:
-            st.success(f"🏆 Miglior modello: {best_model.__class__.__name__}")
+            # ✅ Salva risultati e modello migliore in session_state
             results_df = pd.DataFrame(results).T
-            st.write("### 📊 Risultati complessivi")
-            st.write(results_df)
-           # Dopo aver scelto il best_model e aver completato il training
+            st.session_state.results_df = results_df
             st.session_state.best_model = best_model
             st.session_state.X_train = X_train
             st.session_state.y_train = y_train
             st.session_state.X_test = X_test
             st.session_state.y_test = y_test
-            st.session_state.results_df = results_df
             st.session_state.training_done = True
-            st.session_state.results_df = results_df
-    
+
+            st.success(f"🏆 Miglior modello: {best_model.__class__.__name__}")
+            st.write("### 📊 Risultati complessivi")
+            st.dataframe(results_df)
+   
     # --- Grafici comparativi e metriche ---
     st.subheader("📉 Confronto modelli")
     results_df = st.session_state.get("results_df", None)
@@ -786,6 +759,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
