@@ -539,10 +539,11 @@ if st.button("🚀 Avvia training"):
             st.session_state.y_test = y_test
             st.session_state.results_df = results_df
             st.session_state.training_done = True
+            st.session_state.results_df = results_df
     
     # --- Grafici comparativi e metriche ---
     st.subheader("📉 Confronto modelli")
-
+    results_df = st.session_state.get("results_df", None)
     if problem_type == "classification":
                 # --- Metriche Train/Test ---
         fig, ax = plt.subplots(figsize=(8,5))
@@ -774,6 +775,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
