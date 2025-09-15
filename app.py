@@ -538,7 +538,7 @@ if st.button("🚀 Avvia training"):
             st.session_state.X_test = X_test
             st.session_state.y_test = y_test
             st.session_state.results_df = results_df
-
+            st.session_state.training_done = True
     
     # --- Grafici comparativi e metriche ---
     st.subheader("📉 Confronto modelli")
@@ -649,7 +649,7 @@ if st.button("🚀 Avvia training"):
 
         st.session_state.training_done = True   # 👈 flag di stato
 
-        if "training_done" in st.session_state and st.session_state.training_done:
+        if st.session_state.get("training_done", False):   # 👈 esegui solo se training fatto
             st.markdown("### 🧪 Calibrazione modello")
         
         # Menu a tendina per metodo di calibrazione
@@ -760,6 +760,7 @@ if st.button("🚀 Avvia training"):
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
