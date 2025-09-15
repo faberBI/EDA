@@ -682,6 +682,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
                 "Recall": recall_score(y_test, y_pred, average="weighted")
             }
 
+            # --- Calcolo ECE ---
             if y_prob is not None:
                 ece_list = []
                 for i in range(y_prob.shape[1]):
@@ -696,6 +697,24 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
             st.session_state.calibrated_metrics = metrics_dict
             st.success("✅ Calibrazione completata!")
 
+            # --- Grafico di calibrazione ---
+            if y_prob is not None:
+                st.write("### 📈 Grafico di calibrazione")
+                fig, ax = plt.subplots(figsize=(6,6))
+                for i in range(y_prob.shape[1]):
+                    prob_true, prob_pred = calibration_curve(
+                        (y_test == i).astype(int),
+                        y_prob[:, i],
+                        n_bins=10
+                    )
+                    ax.plot(prob_pred, prob_true, marker='o', label=f"Classe {i}")
+                ax.plot([0, 1], [0, 1], 'k--', label="Perfectly calibrated")
+                ax.set_xlabel("Probabilità Predetta")
+                ax.set_ylabel("Probabilità Osservata")
+                ax.set_title(f"Calibrazione: {calibration_method}")
+                ax.legend()
+                st.pyplot(fig)
+
         except Exception as e:
             st.error(f"❌ Errore nella calibrazione: {type(e).__name__} - {e}")
 
@@ -704,6 +723,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
         metrics_df = pd.DataFrame([st.session_state.calibrated_metrics])
         st.write("### 📊 Metriche modello calibrato")
         st.dataframe(metrics_df)
+
         
     client = OpenAI(api_key=api_key)
 
@@ -744,6 +764,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
