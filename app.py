@@ -348,52 +348,52 @@ if target_column:
 # ✨ Feature Selection
 # ============================================================
 st.markdown("### ✨ Feature Selection")
-
+if "X_train" in locals() and X_train is not None:
 # Assicurati che X sia float
-X_train = X_train.astype(float)
-X_val   = X_val.astype(float)
-X_test  = X_test.astype(float)
+    X_train = X_train.astype(float)
+    X_val   = X_val.astype(float)
+    X_test  = X_test.astype(float)
 
-# Allinea y
-y_train = pd.Series(y_train).reset_index(drop=True)
-y_val   = pd.Series(y_val).reset_index(drop=True)
-y_test  = pd.Series(y_test).reset_index(drop=True)
+    # Allinea y
+    y_train = pd.Series(y_train).reset_index(drop=True)
+    y_val   = pd.Series(y_val).reset_index(drop=True)
+    y_test  = pd.Series(y_test).reset_index(drop=True)
 
-# Seleziona il numero massimo di features disponibili
-num_features = X_train.shape[1]
+    # Seleziona il numero massimo di features disponibili
+    num_features = X_train.shape[1]
 
-if num_features == 0:
-    st.error("❌ Non ci sono feature disponibili dopo il preprocessing.")
+    if num_features == 0:
+        st.error("❌ Non ci sono feature disponibili dopo il preprocessing.")
 
 # Valore di default per lo slider (max 20 o numero di colonne)
-else: 
-    default_value = min(20, num_features)
+    else: 
+        default_value = min(20, num_features)
 
-    # Slider Streamlit per scegliere quante feature selezionare
-    k = st.slider(
-    label="Numero di features da selezionare",
-    min_value=1,
-    max_value=num_features,
-    value=default_value
-    )
+        # Slider Streamlit per scegliere quante feature selezionare
+        k = st.slider(
+        label="Numero di features da selezionare",
+        min_value=1,
+        max_value=num_features,
+        value=default_value
+        )
 
-    # --- Selezione delle migliori k feature ---
-    # Scegli la funzione di scoring in base al tipo di problema
-    score_func = f_classif if problem_type == "classification" else f_regression
+        # --- Selezione delle migliori k feature ---
+        # Scegli la funzione di scoring in base al tipo di problema
+        score_func = f_classif if problem_type == "classification" else f_regression
 
-# Inizializza il selettore
-    selector = SelectKBest(score_func=score_func, k=k)
+        # Inizializza il selettore
+        selector = SelectKBest(score_func=score_func, k=k)
 
-# Fit sul train set
-    X_train_selected = selector.fit_transform(X_train, y_train)
-# Trasforma validation e test set usando le stesse feature selezionate
-    X_val_selected = selector.transform(X_val)
-    X_test_selected = selector.transform(X_test)
+        # Fit sul train set
+        X_train_selected = selector.fit_transform(X_train, y_train)
+        # Trasforma validation e test set usando le stesse feature selezionate
+        X_val_selected = selector.transform(X_val)
+        X_test_selected = selector.transform(X_test)
 
-# Aggiorna le variabili originali per il training
-    X_train, X_val, X_test = X_train_selected, X_val_selected, X_test_selected
+    # Aggiorna le variabili originali per il training
+        X_train, X_val, X_test = X_train_selected, X_val_selected, X_test_selected
 
-    st.success(f"✅ Selezionate le migliori {k} feature per il training!")
+        st.success(f"✅ Selezionate le migliori {k} feature per il training!")
 
 # ------------------------------------------------------------
 # 🔘 Scelta modelli
@@ -764,6 +764,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
