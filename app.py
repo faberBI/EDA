@@ -418,6 +418,32 @@ if "X_train" in locals() and X_train is not None:
 
         st.success(f"✅ Selezionate le migliori {k} feature per il training!")
 
+# ============================================================
+# 📊 Visualizza dataset dopo Preprocessing + Feature Selection
+# ============================================================
+st.markdown("### 📝 Dataset finale dopo preprocessing e feature selection")
+
+# Funzione per stampare shape e prime righe
+def inspect_dataset(X, y, name="Train"):
+    st.write(f"**{name} Set**")
+    st.write(f"Shape X: {X.shape} | Shape y: {len(y)}")
+    st.dataframe(pd.concat([pd.DataFrame(X, columns=[f"Feature_{i}" for i in range(X.shape[1])]), 
+                            pd.Series(y, name='Target')], axis=1).head(10))
+    st.write("---")
+
+# Visualizza Train, Validation e Test
+inspect_dataset(X_train, y_train, "Train")
+inspect_dataset(X_val, y_val, "Validation")
+inspect_dataset(X_test, y_test, "Test")
+
+# Eventuale info sulle colonne
+st.markdown("#### 🔹 Tipi di dati e statistiche")
+for df_tmp, name in zip([X_train, X_val, X_test], ["Train", "Validation", "Test"]):
+    st.write(f"**{name} Set**")
+    st.write(df_tmp.dtypes.value_counts())
+    st.write(df_tmp.describe())
+    st.write("---")
+
 
 # ------------------------------------------------------------
 # 🔘 Scelta modelli
@@ -829,6 +855,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
