@@ -428,7 +428,7 @@ if "X_train" in locals() and X_train is not None:
 #    st.write(f"**{name} Set**")
 #    st.write(f"Shape X: {X.shape} | Shape y: {len(y)}")
 #    st.dataframe(pd.concat([pd.DataFrame(X, columns=[f"Feature_{i}" for i in range(X.shape[1])]), 
-                            pd.Series(y, name='Target')], axis=1).head(10))
+                            #pd.Series(y, name='Target')], axis=1).head(10))
 #    st.write("---")
 
 # Visualizza Train, Validation e Test
@@ -855,6 +855,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
