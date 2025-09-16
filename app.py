@@ -373,10 +373,13 @@ if target_column:
 # ============================================================
 st.markdown("### ✨ Feature Selection")
 if "X_train" in locals() and X_train is not None:
-    # Assicurati che X sia float
+    # 🔎 Assicuriamoci che tutte le colonne siano numeriche
+    for df_tmp in [X_train, X_val, X_test]:
+        for col in df_tmp.columns:
+            if not np.issubdtype(df_tmp[col].dtype, np.number):
+                df_tmp[col] = df_tmp[col].astype("category").cat.codes
 
-    st.write("📌 Dtypes dopo preprocessing:", X_train.dtypes)
-    
+    # Ora tutte numeriche → forziamo float
     X_train = X_train.astype(float)
     X_val   = X_val.astype(float)
     X_test  = X_test.astype(float)
@@ -391,36 +394,30 @@ if "X_train" in locals() and X_train is not None:
 
     if num_features == 0:
         st.error("❌ Non ci sono feature disponibili dopo il preprocessing.")
-
-# Valore di default per lo slider (max 20 o numero di colonne)
-    else: 
+    else:
         default_value = min(20, num_features)
 
         # Slider Streamlit per scegliere quante feature selezionare
         k = st.slider(
-        label="Numero di features da selezionare",
-        min_value=1,
-        max_value=num_features,
-        value=default_value
+            label="Numero di features da selezionare",
+            min_value=1,
+            max_value=num_features,
+            value=default_value
         )
 
         # --- Selezione delle migliori k feature ---
-        # Scegli la funzione di scoring in base al tipo di problema
         score_func = f_classif if problem_type == "classification" else f_regression
-
-        # Inizializza il selettore
         selector = SelectKBest(score_func=score_func, k=k)
 
-        # Fit sul train set
         X_train_selected = selector.fit_transform(X_train, y_train)
-        # Trasforma validation e test set usando le stesse feature selezionate
-        X_val_selected = selector.transform(X_val)
-        X_test_selected = selector.transform(X_test)
+        X_val_selected   = selector.transform(X_val)
+        X_test_selected  = selector.transform(X_test)
 
-    # Aggiorna le variabili originali per il training
+        # Aggiorna le variabili originali per il training
         X_train, X_val, X_test = X_train_selected, X_val_selected, X_test_selected
 
         st.success(f"✅ Selezionate le migliori {k} feature per il training!")
+
 
 # ------------------------------------------------------------
 # 🔘 Scelta modelli
@@ -832,6 +829,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
