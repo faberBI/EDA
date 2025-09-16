@@ -20,8 +20,10 @@ from sklearn.metrics import (
     mean_absolute_error,
     r2_score,
     confusion_matrix,
-    classification_report
+    classification_report,
+    make_scorer
 )
+
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from xgboost import XGBClassifier, XGBRegressor
@@ -43,6 +45,20 @@ from openai import OpenAI
 import time
 
 api_key = st.secrets["OPENAI_API_KEY"]
+
+# ============================================================
+# 📏 Funzione custom Huber Loss
+# ============================================================
+def huber_loss(y_true, y_pred, delta=1.0):
+    error = y_true - y_pred
+    return np.mean(
+        np.where(np.abs(error) <= delta,
+                 0.5 * error**2,
+                 delta * (np.abs(error) - 0.5 * delta))
+    )
+
+huber_scorer = make_scorer(huber_loss, greater_is_better=False)
+
 
 st.set_page_config(page_title="EDA + ML Automatica", layout="wide")
 
@@ -403,6 +419,32 @@ if "problem_type" in locals() or "problem_type" in st.session_state:
 
     st.markdown("### ⚙️ Scegli i modelli da allenare")
 
+    # 📌 Selezione metrica da UI
+    if problem_type == "classification":
+        metric_choice = st.selectbox(
+            "📏 Seleziona la funzione di valutazione",
+            ["Accuracy", "F1", "Precision", "Recall"],
+            index=1
+        )
+        scoring_map = {
+            "Accuracy": "accuracy",
+            "F1": "f1_weighted",
+            "Precision": "precision_weighted",
+            "Recall": "recall_weighted",
+        }
+    else:
+        metric_choice = st.selectbox(
+            "📏 Seleziona la funzione di valutazione",
+            ["MAE", "RMSE", "Huber"],
+            index=1
+        )
+        scoring_map = {
+            "MAE": "neg_mean_absolute_error",
+            "RMSE": "neg_root_mean_squared_error",
+            "Huber": huber_scorer,
+        }
+
+    # Modelli disponibili
     models = {}
     if problem_type == "classification":
         if st.checkbox("Logistic Regression"):
@@ -429,6 +471,7 @@ if "problem_type" in locals() or "problem_type" in st.session_state:
 
 else:
     st.warning("⚠️ Devi prima selezionare il tipo di problema (classification/regression).")
+
 # ============================================================
 # 🚀 Avvio Training
 # ============================================================
@@ -466,7 +509,7 @@ if st.button("🚀 Avvia training"):
                         param_distributions=param_grids[name],
                         n_iter=10,
                         cv=3,
-                        scoring="f1_weighted" if problem_type == "classification" else "r2",
+                        scoring=scoring_map[metric_choice],
                         n_jobs=-1,
                         random_state=42
                     )
@@ -476,18 +519,24 @@ if st.button("🚀 Avvia training"):
                 else:
                     model.fit(X_train, y_train)
 
-                # Predizioni e metriche
+                # Predizioni
                 y_pred_train = model.predict(X_train)
                 y_pred_test = model.predict(X_test)
 
+                # Metriche dinamiche
                 if problem_type == "classification":
                     metrics = {
                         "Train Accuracy": accuracy_score(y_train, y_pred_train),
                         "Test Accuracy": accuracy_score(y_test, y_pred_test),
                         "Train F1": f1_score(y_train, y_pred_train, average="weighted"),
                         "Test F1": f1_score(y_test, y_pred_test, average="weighted"),
+                        "Train Precision": precision_score(y_train, y_pred_train, average="weighted"),
+                        "Test Precision": precision_score(y_test, y_pred_test, average="weighted"),
+                        "Train Recall": recall_score(y_train, y_pred_train, average="weighted"),
+                        "Test Recall": recall_score(y_test, y_pred_test, average="weighted"),
                     }
-                    score = metrics["Test F1"]
+                    score = metrics[f"Test {metric_choice}"]
+
                 else:
                     metrics = {
                         "Train RMSE": np.sqrt(mean_squared_error(y_train, y_pred_train)),
@@ -496,8 +545,10 @@ if st.button("🚀 Avvia training"):
                         "Test MAE": mean_absolute_error(y_test, y_pred_test),
                         "Train R2": r2_score(y_train, y_pred_train),
                         "Test R2": r2_score(y_test, y_pred_test),
+                        "Train Huber": huber_loss(y_train, y_pred_train),
+                        "Test Huber": huber_loss(y_test, y_pred_test),
                     }
-                    score = metrics["Test R2"]
+                    score = metrics[f"Test {metric_choice}"]
 
                 results[name] = metrics
 
@@ -770,6 +821,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
