@@ -306,25 +306,29 @@ if target_column:
             else:
                 num_imputer = SimpleImputer(strategy="most_frequent")
 
-            X_train[numeric_cols] = num_imputer.fit_transform(X_train[numeric_cols])
-            X_val[numeric_cols]   = num_imputer.transform(X_val[numeric_cols])
-            X_test[numeric_cols]  = num_imputer.transform(X_test[numeric_cols])
+            if len(numeric_cols) > 0:
+                X_train[numeric_cols] = num_imputer.fit_transform(X_train[numeric_cols])
+                X_val[numeric_cols]   = num_imputer.transform(X_val[numeric_cols])
+                X_test[numeric_cols]  = num_imputer.transform(X_test[numeric_cols])
 
-            cat_imputer = SimpleImputer(strategy="most_frequent")
-            X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
-            X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
-            X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
+            if len(categorical_cols) > 0:
+                cat_imputer = SimpleImputer(strategy="most_frequent")
+                X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
+                X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
+                X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
 
         elif missing_strategy == "iterative":
-            imputer = IterativeImputer(random_state=42)
-            X_train[numeric_cols] = imputer.fit_transform(X_train[numeric_cols])
-            X_val[numeric_cols]   = imputer.transform(X_val[numeric_cols])
-            X_test[numeric_cols]  = imputer.transform(X_test[numeric_cols])
+            if len(numeric_cols) > 0:
+                imputer = IterativeImputer(random_state=42)
+                X_train[numeric_cols] = imputer.fit_transform(X_train[numeric_cols])
+                X_val[numeric_cols]   = imputer.transform(X_val[numeric_cols])
+                X_test[numeric_cols]  = imputer.transform(X_test[numeric_cols])
 
-            cat_imputer = SimpleImputer(strategy="most_frequent")
-            X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
-            X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
-            X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
+            if len(categorical_cols) > 0:
+                cat_imputer = SimpleImputer(strategy="most_frequent")
+                X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
+                X_val[categorical_cols]   = cat_imputer.transform(X_val[categorical_cols])
+                X_test[categorical_cols]  = cat_imputer.transform(X_test[categorical_cols])
 
         st.success(f"✅ Missing values gestiti con strategia: **{missing_strategy}**")
 
@@ -335,7 +339,7 @@ if target_column:
             X_val[numeric_cols]   = scaler.transform(X_val[numeric_cols])
             X_test[numeric_cols]  = scaler.transform(X_test[numeric_cols])
 
-        # --- One-hot encoding sempre su tutte le categoriche ---
+        # --- One-hot encoding categoriche ---
         if len(categorical_cols) > 0:
             encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
             train_encoded = encoder.fit_transform(X_train[categorical_cols])
@@ -347,12 +351,16 @@ if target_column:
             val_encoded   = pd.DataFrame(val_encoded, columns=encoded_cols, index=X_val.index)
             test_encoded  = pd.DataFrame(test_encoded, columns=encoded_cols, index=X_test.index)
 
-            # Unisci numeriche + OneHotEncoded
+            # 🔥 Unisci numeriche + categoriche encodate
             X_train = pd.concat([X_train.drop(columns=categorical_cols), train_encoded], axis=1)
             X_val   = pd.concat([X_val.drop(columns=categorical_cols), val_encoded], axis=1)
             X_test  = pd.concat([X_test.drop(columns=categorical_cols), test_encoded], axis=1)
 
-        st.success("✅ Tutte le variabili categoriche convertite con OneHotEncoding. Tutti i dati sono numerici!")
+            st.success("✅ Tutte le variabili categoriche convertite con OneHotEncoding.")
+        else:
+            st.info("ℹ️ Nessuna colonna categorica da convertire.")
+
+        st.success("✅ Tutti i dati ora sono numerici!")
 
     # --- Pulizia target ---
     y_train = pd.Series(y_train).dropna().replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
@@ -824,6 +832,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
