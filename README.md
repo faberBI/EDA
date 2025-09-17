@@ -33,6 +33,7 @@ This application allows you to upload a dataset (CSV or Excel), perform **Explor
   * XGBoost
   * LightGBM
   * CatBoost
+  * Linear Regression
 
 * **Customizable evaluation metric** selection for model training
 
