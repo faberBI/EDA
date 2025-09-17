@@ -1,61 +1,75 @@
-# 🔎 Exploratory Data Analysis & AutoML App
-
-Questa applicazione consente di caricare un dataset (CSV o Excel) ed eseguire un'**Analisi Esplorativa dei Dati (EDA)** e successivamente addestrare modelli di **Machine Learning** in maniera automatica e interattiva tramite **Streamlit**.
+Ecco la versione tradotta in **inglese** e aggiornata con le nuove funzionalità richieste:
 
 ---
 
-## ✨ Funzionalità
+# 🔎 Exploratory Data Analysis & AutoML App
+
+This application allows you to upload a dataset (CSV or Excel), perform **Exploratory Data Analysis (EDA)**, and then train **Machine Learning models** automatically and interactively using **Streamlit**.
+
+---
+
+## ✨ Features
 
 ### 🧮 Exploratory Data Analysis (EDA)
 
-* Caricamento dataset (`.csv`, `.xlsx`)
-* Scelta della variabile **target (y)** tra le colonne disponibili
-* Analisi **univariata** (distribuzioni numeriche e categoriche)
-* Analisi **bivariata** (numeriche vs target, categoriche vs target)
-* **Matrice di correlazione**
-* **PCA Analysis** (riduzione dimensionale)
-* **Clustering** con KMeans e DBSCAN (con Silhouette Score)
-* **Test di normalità (Shapiro-Wilk)**
-* Download del dataset arricchito con i cluster
+* Upload dataset (`.csv`, `.xlsx`)
+* Select the **target variable (y)** from the available columns
+* **Univariate analysis** (numerical and categorical distributions)
+* **Bivariate analysis** (numerical vs target, categorical vs target)
+* **Correlation matrix**
+* **PCA Analysis** (dimensionality reduction)
+* **Clustering** with KMeans and DBSCAN (with Silhouette Score)
+* **Normality test (Shapiro-Wilk)**
+* Download the dataset enriched with cluster labels
 
 ### 🤖 AutoML
 
-* Identificazione automatica del **tipo di problema** (Classificazione o Regressione)
-* Suddivisione del dataset in **Train / Validation / Test** con percentuale personalizzabile via slider
-* **Feature Selection** automatica con `SelectKBest`
-* Addestramento dei seguenti modelli (selezionabili dall’utente):
+* Automatic detection of the **problem type** (Classification or Regression)
+
+* Customizable **Train / Validation / Test split** via slider
+
+* Automatic **Feature Selection** with `SelectKBest`
+
+* Train the following models (user-selectable):
 
   * Random Forest
   * Gradient Boosting
   * XGBoost
   * LightGBM
   * CatBoost
-* Valutazione su **Train, Validation e Test set** per identificare l’overfitting
-* Metriche di valutazione:
 
-  * **Classificazione:** Accuracy, Precision, Recall, F1, AUC, Brier Score, ECE
-  * **Regressione:** RMSE, MAE, R²
-* **Grafici interattivi**:
+* **Customizable evaluation metric** selection for model training
 
-  * Distribuzioni, scatter plot, heatmap
-  * Grafico comparativo delle metriche dei modelli
-  * Scatter plot per valutare overfitting (Train vs Test)
+* **Classification model calibration** (e.g., Platt scaling, isotonic regression)
+
+* Evaluation on **Train, Validation, and Test sets** to detect overfitting
+
+* Evaluation metrics:
+
+  * **Classification:** Accuracy, Precision, Recall, F1, AUC, Brier Score, Expected Calibration Error (ECE)
+  * **Regression:** RMSE, MAE, R²
+
+* **Interactive visualizations**:
+
+  * Distributions, scatter plots, heatmaps
+  * Comparative chart of model metrics
+  * Scatter plot to assess overfitting (Train vs Test)
 
 ### 🔮 GPT Insight
 
-* Generazione automatica di un **commento professionale** con **GPT** che analizza i risultati, evidenzia overfitting ed elegge il *best model*.
+* Automatic generation of a **professional report** with **GPT** that analyzes the results, highlights overfitting, and selects the *best model*.
 
 ---
 
-## 📦 Requisiti
+## 📦 Requirements
 
-Installa i pacchetti necessari con:
+Install the necessary packages with:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Contenuto di `requirements.txt`:
+Contents of `requirements.txt`:
 
 ```txt
 streamlit>=1.28.0
@@ -75,11 +89,10 @@ openai>=1.12.0
 
 ---
 
-## 🚀 Avvio
+## 🚀 Run the App
 
-Lancia l’applicazione con:
+Launch the application with:
 
 ```bash
 streamlit run app.py
 ```
-
