@@ -1,7 +1,3 @@
-Ecco la versione tradotta in **inglese** e aggiornata con le nuove funzionalità richieste:
-
----
-
 # 🔎 Exploratory Data Analysis & AutoML App
 
 This application allows you to upload a dataset (CSV or Excel), perform **Exploratory Data Analysis (EDA)**, and then train **Machine Learning models** automatically and interactively using **Streamlit**.
