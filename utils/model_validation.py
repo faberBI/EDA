@@ -1,3 +1,10 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import learning_curve
+from sklearn.linear_model import Ridge
+from sklearn.metrics.pairwise import euclidean_distances
+
 def plot_feature_importance(model, X_train, y_train, feature_names):
 
 
