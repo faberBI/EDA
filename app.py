@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from utils.eda_utils import EDA
+from utils.eda_utils import plot_learning_curve,  custom_lime_explanation, plot_feature_importance
+
 from scipy.stats import shapiro
 import io
 import numpy as np
@@ -927,6 +929,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
