@@ -852,6 +852,28 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
         st.write("### 📊 Metriche modello calibrato")
         st.dataframe(metrics_df)
 
+
+
+    st.subheader("🔹 Seleziona istanza per LIME explanation")
+
+    # Slider per scegliere l'indice dell'istanza
+    instance_idx = st.slider(
+        "Scegli l'indice dell'istanza nel Test Set",
+        min_value=0,
+        max_value=len(X_test)-1,
+        value=0
+    )
+
+    # Recupera l'istanza selezionata
+    instance = X_test.iloc[instance_idx].values.reshape(1, -1)
+
+    # Genera LIME explanation custom
+    explanation, fig = custom_lime_explanation(best_model, X_train, instance, num_features=10)
+
+    # Mostra risultati in Streamlit
+    st.subheader(f"🔍 LIME Explanation per istanza #{instance_idx}")
+    st.dataframe(explanation)
+    st.pyplot(fig)
         
     client = OpenAI(api_key=api_key)
 
@@ -892,6 +914,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
