@@ -9,6 +9,7 @@ import numpy as np
 
 # ML librerie
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import learning_curve
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression
 from sklearn.metrics import (
@@ -663,6 +664,12 @@ else:
 
         # --- Confusion Matrix ---
         y_pred_test = best_model.predict(X_test)
+        plot_learning_curve(
+        best_model,
+        X_train,
+        y_train,
+        scoring=scoring,
+        cv=5)
         cm = confusion_matrix(y_test, y_pred_test)
         fig, ax = plt.subplots(figsize=(6,5))
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
@@ -709,6 +716,13 @@ else:
         # --- Scatter Plot y_true vs y_pred ---
         st.subheader("📌 Scatter Plot Predizioni vs Valori Reali (Test)")
         y_pred_test = best_model.predict(X_test)
+        plot_learning_curve(
+        best_model,
+        X_train,
+        y_train,
+        scoring=scoring,
+        cv=5)
+        
         fig, ax = plt.subplots(figsize=(6,6))
         ax.scatter(y_test, y_pred_test, alpha=0.6)
         ax.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'r--')
@@ -855,6 +869,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
