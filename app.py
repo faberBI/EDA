@@ -7,6 +7,19 @@ from scipy.stats import shapiro
 import io
 import numpy as np
 
+
+def huber_scorer(y_true, y_pred, delta=1.0):
+    """
+    Calcola il Huber loss tra y_true e y_pred.
+    delta: soglia che separa l'errore quadratico da quello lineare
+    """
+    error = y_true - y_pred
+    is_small_error = np.abs(error) <= delta
+    squared_loss = 0.5 * error**2
+    linear_loss = delta * (np.abs(error) - 0.5 * delta)
+    return np.mean(np.where(is_small_error, squared_loss, linear_loss))
+
+
 # ML librerie
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import learning_curve
@@ -914,6 +927,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
