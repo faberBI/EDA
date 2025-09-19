@@ -3,8 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from utils.eda_utils import EDA
-from utils.eda_utils import plot_learning_curve,  custom_lime_explanation, plot_feature_importance
-
+from utils.model_validation import plot_learning_curve,  custom_lime_explanation, plot_feature_importance
 from scipy.stats import shapiro
 import io
 import numpy as np
@@ -25,6 +24,8 @@ def huber_scorer(y_true, y_pred, delta=1.0):
 # ML librerie
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import learning_curve
+from sklearn.linear_model import Ridge
+from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.feature_selection import SelectKBest, f_classif, f_regression
 from sklearn.metrics import (
@@ -929,6 +930,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
