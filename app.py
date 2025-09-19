@@ -690,7 +690,8 @@ else:
         st.subheader("📈 Learning Curve")
         st.pyplot(fig)
         
-        fi_df, fig = plot_feature_importance(best_model, X_train, y_train, X_train.columns)
+        fi_df, fig = plot_feature_importance(best_model, X_train, y_train, list(X_train.columns))
+
 
         if fi_df is not None:
             st.subheader("📊 Top 10 Feature Importance")
@@ -755,7 +756,8 @@ else:
         st.pyplot(fig)
 
         
-        fi_df, fig = plot_feature_importance(best_model, X_train, y_train, X_train.columns)
+        fi_df, fig = plot_feature_importance(best_model, X_train, y_train, list(X_train.columns))
+
 
         if fi_df is not None:
             st.subheader("📊 Top 10 Feature Importance")
@@ -930,6 +932,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
