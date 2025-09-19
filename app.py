@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from utils.eda_utils import EDA  # ✅ percorso aggiornato
+from utils.eda_utils import EDA, plot_feature_importance, plot_learning_curve
 from scipy.stats import shapiro
 import io
 import numpy as np
@@ -664,12 +664,23 @@ else:
 
         # --- Confusion Matrix ---
         y_pred_test = best_model.predict(X_test)
-        plot_learning_curve(
+        fig, _ = plot_learning_curve(
         best_model,
         X_train,
         y_train,
-        scoring=scoring,
-        cv=5)
+        scoring=scoring_map[metric_choice],
+        cv=5
+        )
+        st.subheader("📈 Learning Curve")
+        st.pyplot(fig)
+        
+        fi_df, fig = plot_feature_importance(best_model, X_train, y_train, X_train.columns)
+
+        if fi_df is not None:
+            st.subheader("📊 Top 10 Feature Importance")
+            st.dataframe(fi_df.head(10))
+            st.pyplot(fig)
+
         cm = confusion_matrix(y_test, y_pred_test)
         fig, ax = plt.subplots(figsize=(6,5))
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
@@ -716,13 +727,25 @@ else:
         # --- Scatter Plot y_true vs y_pred ---
         st.subheader("📌 Scatter Plot Predizioni vs Valori Reali (Test)")
         y_pred_test = best_model.predict(X_test)
-        plot_learning_curve(
+        fig, _ = plot_learning_curve(
         best_model,
         X_train,
         y_train,
-        scoring=scoring,
-        cv=5)
+        scoring=scoring_map[metric_choice],
+        cv=5
+        )
+
+        st.subheader("📈 Learning Curve")
+        st.pyplot(fig)
+
         
+        fi_df, fig = plot_feature_importance(best_model, X_train, y_train, X_train.columns)
+
+        if fi_df is not None:
+            st.subheader("📊 Top 10 Feature Importance")
+            st.dataframe(fi_df.head(10))
+            st.pyplot(fig)
+
         fig, ax = plt.subplots(figsize=(6,6))
         ax.scatter(y_test, y_pred_test, alpha=0.6)
         ax.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'r--')
@@ -869,6 +892,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
