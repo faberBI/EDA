@@ -12,6 +12,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import KNNImputer
 import os
+from sklearn.inspection import permutation_importance
 
 class EDA:
     def __init__(self, df):
@@ -303,4 +304,28 @@ class EDA:
     def save_final_db(self, filename):
         """Saves the final DataFrame with clustering columns to a file (CSV, Parquet, or Excel)."""
         self.save_data(filename)
+
+
+def plot_feature_importance(model, X, y, feature_names, filename="eda_images/feature_importance.png"):
+    if hasattr(model, "feature_importances_"):
+        importance = model.feature_importances_
+    elif hasattr(model, "coef_"):
+        importance = np.abs(model.coef_).flatten()
+    else:
+        result = permutation_importance(model, X, y, n_repeats=10, random_state=42, n_jobs=-1)
+        importance = result.importances_mean
+
+    fi_df = pd.DataFrame({
+        "feature": feature_names,
+        "importance": importance
+    }).sort_values("importance", ascending=False)
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(data=fi_df.head(20), x="importance", y="feature")
+    plt.title("Feature Importance")
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    plt.savefig(filename)
+    plt.close()
+
+    return fi_df
 
