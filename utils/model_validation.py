@@ -76,16 +76,21 @@ def custom_lime_explanation(model, X_train, instance, num_features=10, num_sampl
     """
     np.random.seed(42)
 
+    feature_names = X_train.columns if isinstance(X_train, pd.DataFrame) else [f"f{i}" for i in range(X_train.shape[1])]
+
     # Campiona intorno all'istanza con rumore
     X_sample = np.repeat([instance], num_samples, axis=0)
     noise = np.random.normal(0, 0.01, X_sample.shape)
     X_sample = X_sample + noise
 
+    # 🔧 Converti in DataFrame mantenendo i nomi delle colonne
+    X_sample_df = pd.DataFrame(X_sample, columns=feature_names)
+
     # Predizioni del modello
     if hasattr(model, "predict_proba"):
-        y_pred = model.predict_proba(X_sample)[:, 1]  # se classificazione binaria
+        y_pred = model.predict_proba(X_sample_df)[:, 1]  # se classificazione binaria
     else:
-        y_pred = model.predict(X_sample)  # regression
+        y_pred = model.predict(X_sample_df)  # regression
 
     # Calcolo similarità con kernel RBF
     distances = np.linalg.norm(X_sample - instance, axis=1)
@@ -95,10 +100,9 @@ def custom_lime_explanation(model, X_train, instance, num_features=10, num_sampl
     # Fit modello interpretabile (regressione lineare pesata)
     from sklearn.linear_model import Ridge
     interpretable_model = Ridge(alpha=1.0)
-    interpretable_model.fit(X_sample, y_pred, sample_weight=weights)
+    interpretable_model.fit(X_sample_df, y_pred, sample_weight=weights)
 
     coefs = interpretable_model.coef_
-    feature_names = X_train.columns if isinstance(X_train, pd.DataFrame) else [f"f{i}" for i in range(X_train.shape[1])]
     explanation = pd.DataFrame({
         "Feature": feature_names,
         "Weight": coefs
