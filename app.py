@@ -389,6 +389,7 @@ if target_column:
 # ✨ Feature Selection
 # ============================================================
 st.markdown("### ✨ Feature Selection")
+
 if "X_train" in locals() and X_train is not None:
     # 🔎 Assicuriamoci che tutte le colonne siano numeriche
     for df_tmp in [X_train, X_val, X_test]:
@@ -406,7 +407,7 @@ if "X_train" in locals() and X_train is not None:
     y_val   = pd.Series(y_val).reset_index(drop=True)
     y_test  = pd.Series(y_test).reset_index(drop=True)
 
-    # Seleziona il numero massimo di features disponibili
+    # Numero massimo di feature disponibili
     num_features = X_train.shape[1]
 
     if num_features == 0:
@@ -430,9 +431,6 @@ if "X_train" in locals() and X_train is not None:
         X_val_selected   = selector.transform(X_val)
         X_test_selected  = selector.transform(X_test)
 
-        # Aggiorna le variabili originali per il training
-        X_train, X_val, X_test = X_train_selected, X_val_selected, X_test_selected
-
         # Recupera i nomi delle feature selezionate
         selected_features = selector.get_support(indices=True)
         selected_feature_names = X_train.columns[selected_features]
@@ -442,7 +440,8 @@ if "X_train" in locals() and X_train is not None:
         X_val   = pd.DataFrame(X_val_selected, columns=selected_feature_names, index=y_val.index)
         X_test  = pd.DataFrame(X_test_selected, columns=selected_feature_names, index=y_test.index)
 
-    st.success(f"✅ Selezionate le migliori {k} feature per il training!")
+        st.success(f"✅ Selezionate le migliori {k} feature per il training!")
+
 
         
 # ============================================================
@@ -942,6 +941,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
