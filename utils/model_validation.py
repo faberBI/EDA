@@ -76,10 +76,17 @@ def custom_lime_explanation(model, X_train, instance, num_features=10, num_sampl
     """
     np.random.seed(42)
 
-    feature_names = X_train.columns if isinstance(X_train, pd.DataFrame) else [f"f{i}" for i in range(X_train.shape[1])]
+    feature_names = (
+        X_train.columns if isinstance(X_train, pd.DataFrame) 
+        else [f"f{i}" for i in range(X_train.shape[1])]
+    )
+
+    # 🔧 Garantiamo che instance sia 2D
+    if instance.ndim == 1:
+        instance = instance.reshape(1, -1)
 
     # Campiona intorno all'istanza con rumore
-    X_sample = np.repeat([instance], num_samples, axis=0)
+    X_sample = np.repeat(instance, num_samples, axis=0)
     noise = np.random.normal(0, 0.01, X_sample.shape)
     X_sample = X_sample + noise
 
