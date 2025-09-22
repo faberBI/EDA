@@ -442,7 +442,7 @@ if "X_train" in locals() and X_train is not None:
         X_val   = pd.DataFrame(X_val_selected, columns=selected_feature_names, index=y_val.index)
         X_test  = pd.DataFrame(X_test_selected, columns=selected_feature_names, index=y_test.index)
 
-       st.success(f"✅ Selezionate le migliori {k} feature per il training!")
+    st.success(f"✅ Selezionate le migliori {k} feature per il training!")
 
         
 # ============================================================
@@ -942,6 +942,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
