@@ -407,6 +407,11 @@ if "X_train" in locals() and X_train is not None:
     y_val   = pd.Series(y_val).reset_index(drop=True)
     y_test  = pd.Series(y_test).reset_index(drop=True)
 
+
+    X_train.drop(['KMeans_Cluster','DBSCAN_Cluster'], axis = 1, inplace = True)
+    X_val.drop(['KMeans_Cluster','DBSCAN_Cluster'], axis = 1, inplace = True)
+    X_test.drop(['KMeans_Cluster','DBSCAN_Cluster'], axis = 1, inplace = True)
+    
     # Numero massimo di feature disponibili
     num_features = X_train.shape[1]
 
@@ -642,7 +647,7 @@ if st.button("🚀 Avvia training"):
             st.write("### 📊 Risultati complessivi")
             st.dataframe(results_df)
    
-    # ============================================================
+# ============================================================
 # 📉 Confronto modelli e metriche
 # ============================================================
 st.subheader("📉 Confronto modelli")
@@ -701,12 +706,26 @@ else:
         
         fi_df, fig = plot_feature_importance(best_model, X_train, y_train, list(X_train.columns))
 
-
+        
         if fi_df is not None:
             st.subheader("📊 Top 10 Feature Importance")
             st.dataframe(fi_df.head(10))
             st.pyplot(fig)
 
+        st.markdown("## 🔎 LIME Explanation Model 🚀🚀 ")
+
+        if "best_model" in locals() and best_model is not None:
+            idx = st.slider("Scegli l'indice dell'istanza da spiegare", 0, len(X_test)-1, 0)
+            instance = X_test.iloc[idx].values.reshape(1, -1)
+
+            explanation, fig = custom_lime_explanation(best_model, X_train, instance, num_features=10)
+            st.markdown("### 📊 Feature contribution")
+            st.dataframe(explanation)
+            st.markdown("### 📈 Visualizzazione grafica")
+            st.pyplot(fig)
+        else:
+            st.warning("⚠️ Devi prima allenare un modello per generare la spiegazione.")
+        
         cm = confusion_matrix(y_test, y_pred_test)
         fig, ax = plt.subplots(figsize=(6,5))
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
@@ -735,7 +754,7 @@ else:
             ece_df = pd.DataFrame({"Classe": range(prob_pos.shape[1]), "ECE": ece_list})
             st.write("### Expected Calibration Error (ECE) per classe")
             st.dataframe(ece_df)
-
+        
     else:
         # --- Regressione: Errori e R² ---
         fig, ax = plt.subplots(figsize=(8,5))
@@ -780,7 +799,20 @@ else:
         ax.set_ylabel("Predizione")
         ax.set_title(f"Scatter Predizioni vs Valori Reali ({best_model.__class__.__name__})")
         st.pyplot(fig)
+        
+        st.markdown("## 🔎 LIME Explanation Model 🚀🚀 ")
 
+        if "best_model" in locals() and best_model is not None:
+            idx = st.slider("Scegli l'indice dell'istanza da spiegare", 0, len(X_test)-1, 0)
+            instance = X_test.iloc[idx].values.reshape(1, -1)
+
+            explanation, fig = custom_lime_explanation(best_model, X_train, instance, num_features=10)
+            st.markdown("### 📊 Feature contribution")
+            st.dataframe(explanation)
+            st.markdown("### 📈 Visualizzazione grafica")
+            st.pyplot(fig)
+        else:
+            st.warning("⚠️ Devi prima allenare un modello per generare la spiegazione.")
 # ============================================================
 # 🧪 Calibrazione modello (solo classification)
 # ============================================================
@@ -941,6 +973,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
