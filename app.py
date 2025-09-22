@@ -433,8 +433,18 @@ if "X_train" in locals() and X_train is not None:
         # Aggiorna le variabili originali per il training
         X_train, X_val, X_test = X_train_selected, X_val_selected, X_test_selected
 
-        st.success(f"✅ Selezionate le migliori {k} feature per il training!")
+        # Recupera i nomi delle feature selezionate
+        selected_features = selector.get_support(indices=True)
+        selected_feature_names = X_train.columns[selected_features]
 
+        # Ricostruisci DataFrame mantenendo gli indici
+        X_train = pd.DataFrame(X_train_selected, columns=selected_feature_names, index=y_train.index)
+        X_val   = pd.DataFrame(X_val_selected, columns=selected_feature_names, index=y_val.index)
+        X_test  = pd.DataFrame(X_test_selected, columns=selected_feature_names, index=y_test.index)
+
+       st.success(f"✅ Selezionate le migliori {k} feature per il training!")
+
+        
 # ============================================================
 # 📊 Visualizza dataset dopo Preprocessing + Feature Selection
 # ============================================================
@@ -932,6 +942,7 @@ if st.session_state.get("training_done", False) and problem_type == "classificat
     model_bytes = io.BytesIO()
     joblib.dump(best_model, model_bytes)
     st.download_button("Scarica modello", model_bytes, "best_model.pkl")
+
 
 
 
